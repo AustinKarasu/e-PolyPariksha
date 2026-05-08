@@ -4,5 +4,5 @@
   "latestBuild": 1,
   "mandatory": false,
   "releaseNotes": "Initial PolyH.T Admin release.",
-  "downloadUrl": "https://example.com/releases/polyht-admin-v1.0.0+1.apk"
+  "downloadUrl": "https://raw.githubusercontent.com/AustinKarasu/PolyH.T-App/main/website/releases/polyht-admin-v1.0.0+1.apk"
 }

@@ -4,5 +4,5 @@
   "latestBuild": 1,
   "mandatory": false,
   "releaseNotes": "Initial PolyH.T Student release.",
-  "downloadUrl": "https://example.com/releases/polyht-student-v1.0.0+1.apk"
+  "downloadUrl": "https://raw.githubusercontent.com/AustinKarasu/PolyH.T-App/main/website/releases/polyht-student-v1.0.0+1.apk"
 }
