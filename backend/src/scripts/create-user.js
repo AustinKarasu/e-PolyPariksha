@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { pool } = require('../config/db');
+const { pool, query } = require('../config/db');
 
 async function main() {
   const [role, fullName, identifier, password, branchCode] = process.argv.slice(2);
@@ -15,13 +15,9 @@ async function main() {
 
   let branchId = null;
   if (role === 'student') {
-    if (!branchCode) {
-      throw new Error('Students require a branch_code, for example CO');
-    }
-    const [branches] = await pool.execute('SELECT id FROM branches WHERE code = :code', { code: branchCode });
-    if (!branches[0]) {
-      throw new Error(`Branch not found: ${branchCode}`);
-    }
+    if (!branchCode) throw new Error('Students require a branch_code, for example CE');
+    const branches = await query('SELECT id FROM branches WHERE code = $1', [branchCode]);
+    if (!branches[0]) throw new Error(`Branch not found: ${branchCode}`);
     branchId = branches[0].id;
   }
 
@@ -29,18 +25,15 @@ async function main() {
   const email = role === 'admin' ? identifier : null;
   const collegeId = role === 'student' ? identifier : null;
 
-  await pool.execute(
+  await query(
     `INSERT INTO users (full_name, email, college_id, password_hash, role, branch_id)
-     VALUES (:fullName, :email, :collegeId, :passwordHash, :role, :branchId)`,
-    { fullName, email, collegeId, passwordHash, role, branchId }
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [fullName, email, collegeId, passwordHash, role, branchId]
   );
 
   console.log(`${role} user created: ${identifier}`);
 }
 
 main()
-  .catch((err) => {
-    console.error(err.message);
-    process.exit(1);
-  })
+  .catch((err) => { console.error(err.message); process.exit(1); })
   .finally(() => pool.end());

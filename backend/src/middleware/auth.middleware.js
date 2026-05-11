@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { env } = require('../config/env');
-const { pool } = require('../config/db');
+const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 
 async function authenticate(req, _res, next) {
@@ -13,14 +13,11 @@ async function authenticate(req, _res, next) {
 
   try {
     const payload = jwt.verify(token, env.jwtSecret);
-    const [sessions] = await pool.execute(
-      `SELECT id
-       FROM auth_sessions
-       WHERE token_jti = :jti
-         AND revoked_at IS NULL
-         AND expires_at > CURRENT_TIMESTAMP
+    const sessions = await query(
+      `SELECT id FROM auth_sessions
+       WHERE token_jti = $1 AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP
        LIMIT 1`,
-      { jti: payload.jti }
+      [payload.jti]
     );
     if (!sessions[0]) {
       return next(new ApiError(401, 'Session expired or revoked'));

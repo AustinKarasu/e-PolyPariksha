@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 
 const STUDENT_SELECT = `
@@ -11,89 +11,69 @@ const STUDENT_SELECT = `
   LEFT JOIN branches b ON b.id = u.branch_id`;
 
 async function getStudentProfile(userId) {
-  const [rows] = await pool.execute(
-    `${STUDENT_SELECT} WHERE u.id = :userId AND u.is_active = 1 LIMIT 1`,
-    { userId }
-  );
-  if (!rows[0]) {
-    throw new ApiError(404, 'Student not found');
-  }
-  const student = rows[0];
-  delete student.password_hash;
-  return student;
+  const rows = await query(`${STUDENT_SELECT} WHERE u.id = $1 AND u.is_active = true LIMIT 1`, [userId]);
+  if (!rows[0]) throw new ApiError(404, 'Student not found');
+  return rows[0];
 }
 
 async function updateStudentProfile(userId, patch) {
-  const allowed = [
-    'phone', 'address', 'guardian_name'
-  ];
-  const updates = [];
-  const params = { userId };
+  const allowed = ['phone', 'address', 'guardian_name'];
+  const sets = [];
+  const params = [];
+  let idx = 1;
 
   for (const key of allowed) {
-    if (patch[key] !== undefined) {
-      const col = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      updates.push(`${col} = :${key}`);
-      params[key] = patch[key];
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    if (patch[camelKey] !== undefined) {
+      sets.push(`${key} = $${idx++}`);
+      params.push(patch[camelKey]);
     }
   }
+  if (sets.length === 0) throw new ApiError(422, 'No valid fields to update');
 
-  if (updates.length === 0) {
-    throw new ApiError(422, 'No valid fields to update');
-  }
-
-  await pool.execute(
-    `UPDATE users SET ${updates.join(', ')} WHERE id = :userId`,
-    params
-  );
+  params.push(userId);
+  await query(`UPDATE users SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`, params);
   return getStudentProfile(userId);
 }
 
 async function listAllStudents(filters = {}) {
-  const conditions = ['u.role = "student"'];
-  const params = {};
+  const conditions = ["u.role = 'student'"];
+  const params = [];
+  let idx = 1;
 
   if (filters.branchId) {
-    conditions.push('u.branch_id = :branchId');
-    params.branchId = filters.branchId;
+    conditions.push(`u.branch_id = $${idx++}`);
+    params.push(filters.branchId);
   }
   if (filters.semester) {
-    conditions.push('u.semester = :semester');
-    params.semester = filters.semester;
+    conditions.push(`u.semester = $${idx++}`);
+    params.push(filters.semester);
   }
   if (filters.search) {
-    conditions.push('(u.full_name LIKE :search OR u.college_id LIKE :search OR u.roll_no LIKE :search)');
-    params.search = `%${filters.search}%`;
+    conditions.push(`(u.full_name ILIKE $${idx} OR u.college_id ILIKE $${idx} OR u.roll_no ILIKE $${idx})`);
+    params.push(`%${filters.search}%`);
+    idx++;
   }
 
   const limit = Math.min(Number(filters.limit || 100), 500);
   const offset = Number(filters.offset || 0);
 
-  const [students] = await pool.execute(
-    `${STUDENT_SELECT}
-     WHERE ${conditions.join(' AND ')}
-     ORDER BY u.full_name ASC
-     LIMIT ${limit} OFFSET ${offset}`,
-    params
+  const students = await query(
+    `${STUDENT_SELECT} WHERE ${conditions.join(' AND ')} ORDER BY u.full_name ASC LIMIT $${idx++} OFFSET $${idx}`,
+    [...params, limit, offset]
   );
 
-  const [countResult] = await pool.execute(
+  const countRows = await query(
     `SELECT COUNT(*) AS total FROM users u WHERE ${conditions.join(' AND ')}`,
     params
   );
 
-  return { students, total: countResult[0].total };
+  return { students, total: Number(countRows[0].total) };
 }
 
 async function getStudentById(studentId) {
-  const [rows] = await pool.execute(
-    `${STUDENT_SELECT} WHERE u.id = :studentId LIMIT 1`,
-    { studentId }
-  );
-  if (!rows[0]) {
-    throw new ApiError(404, 'Student not found');
-  }
-  delete rows[0].password_hash;
+  const rows = await query(`${STUDENT_SELECT} WHERE u.id = $1 LIMIT 1`, [studentId]);
+  if (!rows[0]) throw new ApiError(404, 'Student not found');
   return rows[0];
 }
 
@@ -103,32 +83,25 @@ async function adminUpdateStudent(studentId, patch) {
     'college_name', 'course_name', 'guardian_name', 'phone',
     'address', 'admission_year', 'is_active', 'branch_id'
   ];
-  const updates = [];
-  const params = { studentId };
+  const sets = [];
+  const params = [];
+  let idx = 1;
 
   for (const key of allowed) {
     const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
     if (patch[camelKey] !== undefined) {
-      updates.push(`${key} = :${camelKey}`);
-      params[camelKey] = patch[camelKey];
+      sets.push(`${key} = $${idx++}`);
+      params.push(patch[camelKey]);
     }
   }
+  if (sets.length === 0) throw new ApiError(422, 'No valid fields to update');
 
-  if (updates.length === 0) {
-    throw new ApiError(422, 'No valid fields to update');
-  }
-
-  await pool.execute(
-    `UPDATE users SET ${updates.join(', ')} WHERE id = :studentId AND role = 'student'`,
+  params.push(studentId);
+  await query(
+    `UPDATE users SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} AND role = 'student'`,
     params
   );
   return getStudentById(studentId);
 }
 
-module.exports = {
-  getStudentProfile,
-  updateStudentProfile,
-  listAllStudents,
-  getStudentById,
-  adminUpdateStudent
-};
+module.exports = { getStudentProfile, updateStudentProfile, listAllStudents, getStudentById, adminUpdateStudent };

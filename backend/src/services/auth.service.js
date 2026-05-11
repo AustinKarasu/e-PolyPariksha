@@ -1,13 +1,12 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/db');
+const { query } = require('../config/db');
 const { env } = require('../config/env');
 const { ApiError } = require('../utils/api-error');
-const { toMysqlDateTime } = require('../utils/date');
 
 async function login(identifier, password, context = {}) {
-  const [rows] = await pool.execute(
+  const rows = await query(
     `SELECT u.id, u.full_name, u.email, u.college_id, u.password_hash, u.role,
             u.branch_id, u.is_active, u.dob, u.semester, u.roll_no, u.board_roll_no,
             u.college_name, u.course_name, u.guardian_name, u.phone, u.address,
@@ -15,9 +14,9 @@ async function login(identifier, password, context = {}) {
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
-     WHERE email = :identifier OR college_id = :identifier
+     WHERE u.email = $1 OR u.college_id = $1
      LIMIT 1`,
-    { identifier }
+    [identifier]
   );
 
   const user = rows[0];
@@ -32,30 +31,16 @@ async function login(identifier, password, context = {}) {
 
   const jti = crypto.randomUUID();
   const token = jwt.sign(
-    {
-      sub: user.id,
-      role: user.role,
-      branchId: user.branch_id,
-      jti
-    },
+    { sub: user.id, role: user.role, branchId: user.branch_id, jti },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }
   );
   const decoded = jwt.decode(token);
 
-  await pool.execute(
-    `INSERT INTO auth_sessions
-       (user_id, token_jti, device_label, ip_address, user_agent, expires_at)
-     VALUES
-       (:userId, :jti, :deviceLabel, :ipAddress, :userAgent, :expiresAt)`,
-    {
-      userId: user.id,
-      jti,
-      deviceLabel: context.deviceLabel || null,
-      ipAddress: context.ipAddress || null,
-      userAgent: context.userAgent || null,
-      expiresAt: toMysqlDateTime(new Date(decoded.exp * 1000))
-    }
+  await query(
+    `INSERT INTO auth_sessions (user_id, token_jti, device_label, ip_address, user_agent, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [user.id, jti, context.deviceLabel || null, context.ipAddress || null, context.userAgent || null, new Date(decoded.exp * 1000).toISOString()]
   );
 
   delete user.password_hash;
@@ -63,7 +48,7 @@ async function login(identifier, password, context = {}) {
 }
 
 async function getCurrentUser(userId) {
-  const [rows] = await pool.execute(
+  const rows = await query(
     `SELECT u.id, u.full_name, u.email, u.college_id, u.role,
             u.branch_id, u.dob, u.semester, u.roll_no, u.board_roll_no,
             u.college_name, u.course_name, u.guardian_name, u.phone, u.address,
@@ -71,9 +56,9 @@ async function getCurrentUser(userId) {
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
-     WHERE u.id = :userId AND u.is_active = 1
+     WHERE u.id = $1 AND u.is_active = true
      LIMIT 1`,
-    { userId }
+    [userId]
   );
 
   if (!rows[0]) {
@@ -84,9 +69,9 @@ async function getCurrentUser(userId) {
 
 async function logout(user) {
   if (!user?.jti) return;
-  await pool.execute(
-    'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE token_jti = :jti',
-    { jti: user.jti }
+  await query(
+    'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE token_jti = $1',
+    [user.jti]
   );
 }
 
