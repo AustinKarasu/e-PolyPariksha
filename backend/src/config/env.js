@@ -13,6 +13,7 @@ const env = {
     globalMax: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 120)
   },
   db: {
+    connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '',
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 5432),
     user: process.env.DB_USER || 'postgres',

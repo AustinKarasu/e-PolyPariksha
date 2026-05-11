@@ -2,11 +2,12 @@ const { Pool } = require('pg');
 const { env } = require('./env');
 
 const pool = new Pool({
-  host: env.db.host,
-  port: env.db.port,
-  user: env.db.user,
-  password: env.db.password,
-  database: env.db.database,
+  connectionString: env.db.connectionString || undefined,
+  host: env.db.connectionString ? undefined : env.db.host,
+  port: env.db.connectionString ? undefined : env.db.port,
+  user: env.db.connectionString ? undefined : env.db.user,
+  password: env.db.connectionString ? undefined : env.db.password,
+  database: env.db.connectionString ? undefined : env.db.database,
   ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,

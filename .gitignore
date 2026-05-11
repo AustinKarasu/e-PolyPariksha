@@ -1,5 +1,9 @@
 node_modules/
 .env
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
 uploads/
 build/
 .dart_tool/

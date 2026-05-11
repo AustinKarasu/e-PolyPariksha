@@ -1,124 +1,111 @@
-# PolyH.T — Polytechnic House Test System
+# PolyH.T - Polytechnic House Test System
 
-**Govt. Polytechnic Kangra**
+Govt. Polytechnic Kangra
 
-A dual-app mobile examination system for securely administering and taking house tests. Built with Flutter (Admin + Student apps) and a Node.js/Express REST API backed by MySQL.
+PolyH.T is a dual-app mobile examination system for securely administering and taking house tests. It includes two Flutter apps, a Node.js/Express REST API, a Supabase PostgreSQL database, and optional Supabase Storage/S3-compatible PDF storage.
 
-## Architecture
+## Project Structure
 
-```
-├── apps/
-│   ├── polyht_admin/       # Flutter Admin app
-│   └── polyht_student/     # Flutter Student app
-├── backend/                # Node.js Express API
-│   ├── database/           # SQL schema & migrations
-│   └── src/                # Controllers, services, middleware, routes
-├── docs/                   # API documentation
-└── .github/workflows/      # CI/CD (lint, test, APK release)
+```text
+apps/
+  polyht_admin/        Flutter Admin app
+  polyht_student/      Flutter Student app
+backend/              Node.js Express API
+  database/           SQL schema and migrations
+  src/                Controllers, services, middleware, routes
+docs/                 API, database, security, release, deployment docs
+website/              Public APK release manifests and downloads
+.github/workflows/    CI, Vercel deploy, APK release automation
 ```
 
 ## Features
 
-### Admin App
-- Upload, schedule, and manage house test PDF question papers
-- Support for 6 branches: Computer, Mechanical, Electrical, Instrumental, Electronic, Civil
-- Student directory with search — view every student's profile data
-- Exam security logs with locked attempt management
-- Admin account management (create, activate/deactivate)
-- Light/Dark theme toggle
+### PolyH.T Admin
 
-### Student App
-- View scheduled house tests with live status indicators
-- Secure exam mode with PDF viewer (screenshots blocked, app pinning)
-- Real-time timer and page navigation during exam
-- Student profile with ID card, academic, and personal info
-- Light/Dark theme toggle
-- Automatic lockout on app switching / background detection
+- Secure admin login with JWT session tracking.
+- Dashboard for Computer, Mechanical, Electrical, Instrumental, Electronic, and Civil Engg branches.
+- Upload, schedule, replace, and remove PDF question papers.
+- Configure scheduled start/end time and test duration.
+- Manage student profiles and admin accounts.
+- Review exam security events and unlock blocked attempts.
+- Professional purple theme with light/dark support.
 
-### Backend API
-- JWT authentication with session tracking
-- Role-based access (admin / student)
-- Student profile CRUD with admin oversight
-- PDF storage (local filesystem or S3-compatible)
-- Rate limiting, CORS, helmet, HPP security middleware
-- Exam attempt lifecycle with security event logging
+### PolyH.T Student
+
+- Login with college-provided credentials.
+- View assigned tests by branch.
+- Open PDFs only during the scheduled exam window.
+- Secure exam mode with screenshot blocking, app pinning, back-button blocking, wakelock, and app lifecycle event logging.
+- Submit/mark PDF-based tests complete.
+- Student profile and update checks.
+
+### Backend
+
+- Express REST API with role-based authorization.
+- Supabase PostgreSQL schema for users, branches, tests, attempts, events, and sessions.
+- Bcrypt password hashing.
+- JWT authentication plus server-side session revocation.
+- PDF upload/download through local storage in development or Supabase Storage/S3 in production.
+- Helmet, CORS allowlist, rate limiting, HPP protection, validation, and centralized error handling.
 
 ## Setup
-
-### Prerequisites
-- Node.js 18+
-- MySQL 8+
-- Flutter SDK 3.3+
 
 ### Backend
 
 ```bash
 cd backend
-cp .env.example .env    # Edit with your MySQL credentials and JWT secret
+cp .env.example .env
 npm install
+npm start
 ```
 
-Initialize the database:
+For Supabase production setup, see [docs/supabase.md](docs/supabase.md).
 
-```bash
-mysql -u root -p < database/schema.sql
-mysql -u root -p polyht < database/migrations/002_student_profile.sql
+Initialize the database by running:
+
+```text
+backend/database/schema.sql
+backend/database/migrations/*.sql
 ```
 
 Create the first admin:
 
 ```bash
+cd backend
 npm run create-user
-```
-
-Start the server:
-
-```bash
-npm run dev     # development with nodemon
-npm start       # production
 ```
 
 ### Flutter Apps
 
-Update the API base URL in each app:
+Set the API base URL at build time:
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://your-vercel-project.vercel.app/api
+```
+
+Local defaults are in:
+
 - `apps/polyht_admin/lib/config/api_config.dart`
 - `apps/polyht_student/lib/config/api_config.dart`
 
-```bash
-cd apps/polyht_admin
-flutter pub get
-flutter run
+## Documentation
 
-cd apps/polyht_student
-flutter pub get
-flutter run
-```
+- [API Reference](docs/api.md)
+- [Database](docs/database.md)
+- [Supabase Setup](docs/supabase.md)
+- [Security](docs/security.md)
+- [Security Hardening](docs/security-hardening.md)
+- [Vercel Deployment](docs/vercel.md)
+- [Release Process](docs/release.md)
 
-## API Reference
+## Deployment and Releases
 
-See [docs/api.md](docs/api.md) for the complete REST API reference.
+- Backend deployment to Vercel is configured in `.github/workflows/vercel-deploy.yml`.
+- APK release automation is configured in `.github/workflows/release-apk.yml`.
+- The release workflow builds both Android APKs, creates a GitHub Release, attaches both APKs, and publishes update manifests.
 
-Key endpoint groups:
-- `POST /api/auth/login` — Authentication
-- `GET /api/tests` — Test management
-- `GET /api/students` — Student profiles (admin)
-- `GET /api/students/me` — Student self-service profile
-- `POST /api/attempts/:testId/start` — Exam attempts
-- `GET /api/attempts/admin/locked` — Locked attempt monitoring
+## Important Security Note
 
-## CI/CD
+Real `.env` and `.env.production` files must never be committed. Store Supabase, JWT, Vercel, Android signing, and storage secrets in Vercel environment variables or GitHub repository secrets.
 
-- **CI** (`ci.yml`): Runs Flutter analyze + backend lint on every push
-- **Release** (`release-apk.yml`): Builds signed APKs, creates GitHub Release with download links
-
-## Security
-
-- **Exam Mode**: Android `FLAG_SECURE` (blocks screenshots) + `startLockTask()` (pins app)
-- **Event Detection**: `WidgetsBindingObserver` detects app lifecycle changes → logs to server → auto-locks attempt on critical events (`app_backgrounded`, `app_detached`, `back_blocked`)
-- **JWT Sessions**: Tracked in `auth_sessions` table with revocation support
-- **Rate Limiting**: Auth endpoint limited to 8 attempts per 15 minutes
-- **Secure Storage**: Tokens stored via `flutter_secure_storage` (Keychain/Keystore)
-
-## License
-
-Private — Govt. Polytechnic Kangra
+If a secret was previously committed, rotate it immediately in Supabase/Vercel/GitHub before production use.
