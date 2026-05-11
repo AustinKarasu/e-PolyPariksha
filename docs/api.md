@@ -25,7 +25,20 @@ Response:
     "full_name": "Admin",
     "email": "admin@college.edu",
     "role": "admin",
-    "branch_id": null
+    "branch_id": null,
+    "branch_name": null,
+    "branch_code": null,
+    "dob": null,
+    "semester": null,
+    "roll_no": null,
+    "board_roll_no": null,
+    "college_name": "Govt. Polytechnic Kangra",
+    "course_name": null,
+    "guardian_name": null,
+    "phone": null,
+    "address": null,
+    "admission_year": null,
+    "photo_url": null
   }
 }
 ```
@@ -34,7 +47,7 @@ Use `Authorization: Bearer <token>` for protected endpoints.
 
 `GET /auth/me`
 
-Returns the currently authenticated user. Both apps use this to restore sessions; there is no local dummy user state.
+Returns the currently authenticated user with full profile data. Both apps use this to restore sessions.
 
 `POST /auth/logout`
 
@@ -86,6 +99,58 @@ Student only. Downloads the PDF only when:
 - Student has started the attempt.
 - Attempt is not blocked or completed.
 
+## Students
+
+`GET /students/me`
+
+Student only. Returns the authenticated student's full profile with branch info.
+
+`PATCH /students/me`
+
+Student only. Updates limited self-service fields:
+
+```json
+{
+  "phone": "9876543210",
+  "address": "Village, Kangra, HP",
+  "guardianName": "Parent Name"
+}
+```
+
+`GET /students?branchId=1&semester=3&search=kumar&limit=50&offset=0`
+
+Admin only. Lists students with optional filtering by branch, semester, or search term (matches name, college ID, or roll number).
+
+Response:
+
+```json
+{
+  "students": [...],
+  "total": 120
+}
+```
+
+`GET /students/:id`
+
+Admin only. Returns a single student's full profile.
+
+`PATCH /students/:id`
+
+Admin only. Updates any student field:
+
+```json
+{
+  "fullName": "Updated Name",
+  "semester": 4,
+  "rollNo": "CE-2024-042",
+  "boardRollNo": "HP-2024-1234",
+  "courseName": "Diploma in Computer Engineering",
+  "dob": "2005-03-15",
+  "branchId": 1,
+  "isActive": true
+}
+```
+
 ## Attempts
 
 `POST /attempts/:testId/start`
@@ -132,3 +197,31 @@ Admin only. Returns blocked attempts.
 `POST /attempts/admin/:attemptId/allow`
 
 Admin only. Allows a blocked student to reopen the PDF during the valid schedule window.
+
+## Admin Accounts
+
+`GET /admins`
+
+Admin only. Lists all admin accounts.
+
+`POST /admins`
+
+Admin only. Creates a new admin:
+
+```json
+{
+  "fullName": "New Admin",
+  "email": "admin2@college.edu",
+  "password": "securepassword123"
+}
+```
+
+`PATCH /admins/:id/active`
+
+Admin only. Activates or deactivates an admin:
+
+```json
+{
+  "isActive": false
+}
+```
