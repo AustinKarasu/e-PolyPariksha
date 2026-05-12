@@ -1,16 +1,13 @@
 const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 
-const blockingEvents = new Set(['app_backgrounded', 'app_detached', 'app_hidden', 'back_blocked', 'split_screen_detected']);
+const criticalEvents = new Set(['app_backgrounded', 'app_detached', 'app_hidden', 'back_blocked', 'split_screen_detected']);
 const warningEvents = new Set(['app_inactive', 'app_resumed']);
 
 async function startAttempt(testId, user, context = {}) {
   const test = await getAssignedLiveTestForUser(testId, user);
   const existing = await getAttemptByStudent(testId, user.sub);
 
-  if (existing?.status === 'blocked') {
-    throw new ApiError(423, 'Attempt is locked. Admin permission is required to reopen this paper.');
-  }
   if (existing?.status === 'completed') {
     throw new ApiError(409, 'This attempt has already been submitted.');
   }
@@ -19,7 +16,8 @@ async function startAttempt(testId, user, context = {}) {
     await query(
       `UPDATE test_attempts
        SET last_seen_at = CURRENT_TIMESTAMP,
-           status = CASE WHEN status = 'admin_allowed' THEN 'started' ELSE status END
+           status = CASE WHEN status IN ('admin_allowed', 'blocked') THEN 'started' ELSE status END,
+           blocked_reason = NULL
        WHERE id = $1`,
       [existing.id]
     );
@@ -47,9 +45,6 @@ async function startAttempt(testId, user, context = {}) {
 async function completeAttempt(testId, user, answerNote, context = {}) {
   const attempt = await getAttemptByStudent(testId, user.sub);
   if (!attempt) throw new ApiError(404, 'Attempt not found');
-  if (attempt.status === 'blocked') {
-    throw new ApiError(423, 'Attempt is locked. Admin permission is required before submission.');
-  }
 
   await query(
     `UPDATE test_attempts
@@ -72,20 +67,21 @@ async function recordStudentEvent(testId, user, eventType, metadata = {}, contex
   let message = metadata.message || `Student event: ${eventType}`;
   let severity = warningEvents.has(eventType) ? 'warning' : 'info';
 
-  if (blockingEvents.has(eventType)) {
+  if (criticalEvents.has(eventType)) {
     severity = 'critical';
     message = metadata.message || 'Student left or attempted to leave secure exam mode.';
-    await blockAttempt(attempt.id, eventType);
   } else {
-    await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
+    severity = warningEvents.has(eventType) ? 'warning' : 'info';
   }
+
+  await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
 
   await recordEvent({
     attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
     eventType, severity, message, metadata, context
   });
 
-  return { locked: blockingEvents.has(eventType) };
+  return { locked: false };
 }
 
 async function recordEvent({ attemptId, testId, studentId, branchId, eventType, severity = 'info', message = null, metadata = null, context = {} }) {
@@ -169,25 +165,36 @@ async function allowAttempt(attemptId, adminUser, context = {}) {
   });
 }
 
-async function assertPdfAccess(testId, user, context = {}) {
+async function assertLivePdfAccess(testId, user, context = {}) {
   const attempt = await getAttemptByStudent(testId, user.sub);
   if (!attempt) throw new ApiError(403, 'Start the test before opening the PDF.');
-  if (attempt.status === 'blocked') throw new ApiError(423, 'Attempt is locked. Admin permission is required to reopen this paper.');
   if (attempt.status === 'completed') throw new ApiError(403, 'This attempt has already been completed.');
 
-  await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
+  await query(
+    `UPDATE test_attempts
+     SET last_seen_at = CURRENT_TIMESTAMP,
+         status = CASE WHEN status = 'blocked' THEN 'started' ELSE status END,
+         blocked_reason = NULL
+     WHERE id = $1`,
+    [attempt.id]
+  );
   await recordEvent({
     attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
     eventType: 'pdf_requested', message: 'Student requested the scheduled PDF.', context
   });
 }
 
-async function blockAttempt(attemptId, reason) {
-  await query(
-    `UPDATE test_attempts SET status = 'blocked', blocked_at = CURRENT_TIMESTAMP, blocked_reason = $1, last_seen_at = CURRENT_TIMESTAMP
-     WHERE id = $2 AND status <> 'completed'`,
-    [reason, attemptId]
-  );
+async function assertCompletedPdfAccess(testId, user, context = {}) {
+  const attempt = await getAttemptByStudent(testId, user.sub);
+  if (!attempt || attempt.status !== 'completed') {
+    throw new ApiError(403, 'Submit the test before downloading the paper after it ends.');
+  }
+
+  await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
+  await recordEvent({
+    attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
+    eventType: 'completed_pdf_downloaded', message: 'Student downloaded the paper after the test ended.', context
+  });
 }
 
 async function getAssignedLiveTestForUser(testId, user) {
@@ -211,4 +218,14 @@ async function getAttemptByStudent(testId, studentId) {
   return rows[0] || null;
 }
 
-module.exports = { startAttempt, completeAttempt, recordStudentEvent, recordEvent, listEvents, listLockedAttempts, allowAttempt, assertPdfAccess };
+module.exports = {
+  startAttempt,
+  completeAttempt,
+  recordStudentEvent,
+  recordEvent,
+  listEvents,
+  listLockedAttempts,
+  allowAttempt,
+  assertLivePdfAccess,
+  assertCompletedPdfAccess
+};

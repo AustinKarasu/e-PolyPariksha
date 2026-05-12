@@ -48,7 +48,7 @@ async function listStudentTests(user) {
   );
   return tests.map((test) => ({
     ...test,
-    status: test.attempt_status === 'blocked' ? 'locked' : statusForTest(test)
+    status: statusForTest(test)
   }));
 }
 
@@ -94,6 +94,8 @@ async function replacePdf(id, file) {
 
 async function removeTest(id) {
   const existing = await getTestById(id);
+  await query('DELETE FROM exam_events WHERE test_id = $1', [id]);
+  await query('DELETE FROM test_attempts WHERE test_id = $1', [id]);
   await query('DELETE FROM tests WHERE id = $1', [id]);
   await storageService.deletePdf(existing.pdf_path);
 }
@@ -103,8 +105,13 @@ async function getStudentPdf(testId, user, context = {}) {
   if (!test.is_active) throw new ApiError(403, 'This test is not active');
   if (test.branch_id !== user.branchId) throw new ApiError(403, 'This test is not assigned to your branch');
   if (test.semester !== user.semester) throw new ApiError(403, 'This test is not assigned to your semester');
-  if (statusForTest(test) !== 'live') throw new ApiError(403, 'PDF is available only during scheduled test time');
-  await attemptService.assertPdfAccess(testId, user, context);
+  const status = statusForTest(test);
+  if (status === 'ended') {
+    await attemptService.assertCompletedPdfAccess(testId, user, context);
+    return storageService.getPdfDelivery(test.pdf_path);
+  }
+  if (status !== 'live') throw new ApiError(403, 'PDF is available only during scheduled test time');
+  await attemptService.assertLivePdfAccess(testId, user, context);
   return storageService.getPdfDelivery(test.pdf_path);
 }
 

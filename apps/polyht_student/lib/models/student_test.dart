@@ -24,7 +24,10 @@ class StudentTest {
   final String? blockedReason;
 
   bool get isLive => status == 'live';
-  bool get isLocked => status == 'locked' || attemptStatus == 'blocked';
+  bool get isLocked => false;
+  bool get isCompleted => attemptStatus == 'completed';
+  bool get canStart => isLive && !isLocked && !isCompleted;
+  bool get canDownloadAfterEnd => status == 'ended' && isCompleted;
 
   factory StudentTest.fromJson(Map<String, dynamic> json) {
     return StudentTest(

@@ -181,6 +181,7 @@ class _StudentTestCard extends StatelessWidget {
   }
 
   String get _statusLabel {
+    if (test.isCompleted) return 'SUBMITTED';
     if (test.isLocked) return 'LOCKED';
     return test.status.toUpperCase();
   }
@@ -254,11 +255,15 @@ class _StudentTestCard extends StatelessWidget {
               children: [
                 Icon(Icons.schedule_rounded, size: 14, color: muted),
                 const SizedBox(width: 8),
-                Text(
-                  '${format.format(test.scheduledStart)} — ${format.format(test.scheduledEnd)}',
-                  style: TextStyle(fontSize: 12, color: muted),
+                Expanded(
+                  child: Text(
+                    '${format.format(test.scheduledStart)} - ${format.format(test.scheduledEnd)}',
+                    style: TextStyle(fontSize: 12, color: muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Icon(Icons.timer_outlined, size: 14, color: muted),
                 const SizedBox(width: 4),
                 Text(
@@ -294,27 +299,36 @@ class _StudentTestCard extends StatelessWidget {
               ),
             ),
 
-          // ── Start button ──
+          // ── Action button ──
           Padding(
             padding: const EdgeInsets.all(16),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: test.isLive && !test.isLocked
+                onPressed: test.canStart
                     ? () async {
                         await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamScreen(test: test)));
                         onRefresh();
                       }
+                    : test.canDownloadAfterEnd
+                        ? () async {
+                            await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamScreen(test: test, reviewOnly: true)));
+                            onRefresh();
+                          }
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: test.isLive && !test.isLocked ? AppTheme.success : null,
+                  backgroundColor: test.canStart ? AppTheme.success : null,
                   disabledBackgroundColor: AppTheme.primaryLight.withValues(alpha: 0.08),
                   disabledForegroundColor: AppTheme.ink.withValues(alpha: 0.3),
                 ),
-                icon: Icon(test.isLocked ? Icons.lock_rounded : Icons.play_arrow_rounded),
-                label: Text(test.isLocked
-                    ? 'Locked — contact admin'
-                    : test.isLive
+                icon: Icon(test.canDownloadAfterEnd ? Icons.download_rounded : test.isLocked ? Icons.lock_rounded : Icons.play_arrow_rounded),
+                label: Text(test.canDownloadAfterEnd
+                    ? 'Download paper'
+                    : test.isCompleted
+                        ? 'Submitted'
+                        : test.isLocked
+                            ? 'Locked - contact admin'
+                            : test.isLive
                         ? 'Start Test'
                         : test.status == 'upcoming'
                             ? 'Not available yet'

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:flutter/services.dart';
 
 import '../config/app_theme.dart';
 import '../models/student_test.dart';
@@ -10,9 +11,10 @@ import '../services/exam_security_service.dart';
 import '../services/test_service.dart';
 
 class ExamScreen extends StatefulWidget {
-  const ExamScreen({super.key, required this.test});
+  const ExamScreen({super.key, required this.test, this.reviewOnly = false});
 
   final StudentTest test;
+  final bool reviewOnly;
 
   @override
   State<ExamScreen> createState() => _ExamScreenState();
@@ -36,17 +38,25 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _securityService.setEventHandler(_logEvent);
     _startedAt = DateTime.now();
-    _startTimer();
-    _enterExam();
+    if (widget.reviewOnly) {
+      _loadCompletedPaper();
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      _securityService.setEventHandler(_logEvent);
+      _startTimer();
+      _enterExam();
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _securityService.exitExamMode();
+    if (!widget.reviewOnly) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      _securityService.exitExamMode();
+    }
     super.dispose();
   }
 
@@ -72,6 +82,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (widget.reviewOnly) return;
     if (state == AppLifecycleState.inactive) {
       setState(() => _hasFocusWarning = true);
       unawaited(_logEvent('app_inactive'));
@@ -95,7 +106,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: widget.reviewOnly,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           unawaited(_logEvent('back_blocked'));
@@ -110,7 +121,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
       child: Scaffold(
         // ── Exam AppBar ──
         appBar: AppBar(
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: widget.reviewOnly,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: _locked
@@ -136,7 +147,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
           ),
           actions: [
             // ── Timer chip ──
-            if (!_loading && !_locked)
+            if (!widget.reviewOnly && !_loading && !_locked)
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -168,18 +179,19 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
                 ),
               ),
             // ── Submit button ──
-            TextButton.icon(
-              onPressed: _locked ? null : _confirmComplete,
-              icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-              label: const Text('Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            ),
+            if (!widget.reviewOnly)
+              TextButton.icon(
+                onPressed: _locked ? null : _confirmComplete,
+                icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                label: const Text('Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
           ],
         ),
 
         body: Column(
           children: [
             // ── Warning banner ──
-            if (_hasFocusWarning)
+            if (!widget.reviewOnly && _hasFocusWarning)
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 color: _locked ? AppTheme.error.withValues(alpha: 0.1) : AppTheme.accent.withValues(alpha: 0.1),
@@ -306,6 +318,20 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadCompletedPaper() async {
+    try {
+      final path = await _testService.downloadPdf(widget.test.id);
+      if (mounted) {
+        setState(() {
+          _pdfPath = path;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 

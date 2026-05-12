@@ -43,9 +43,13 @@ async function saveProfilePhoto(file) {
   const contentType = !file.mimetype || file.mimetype === 'application/octet-stream'
     ? inferredType || 'application/octet-stream'
     : file.mimetype;
+  const bytes = file.buffer || await fs.readFile(file.path);
+
+  if (contentType.startsWith('image/')) {
+    return `data:${contentType};base64,${bytes.toString('base64')}`;
+  }
 
   if (env.storage.driver === 's3') {
-    const bytes = file.buffer || await fs.readFile(file.path);
     if (!env.storage.s3.bucket) {
       throw new ApiError(500, 'S3 bucket is not configured');
     }
