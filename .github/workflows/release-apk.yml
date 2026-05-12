@@ -62,12 +62,16 @@ jobs:
           if [ -z "$WEBSITE_BASE_URL" ]; then WEBSITE_BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"; fi
           API_BASE_URL="${{ vars.API_BASE_URL }}"
           if [ -z "$API_BASE_URL" ]; then API_BASE_URL="https://backend-two-mauve-83.vercel.app/api"; fi
+          RELEASE_BASE_URL="https://github.com/${{ github.repository }}/releases/download/v$VERSION_NAME"
+          LATEST_RELEASE_BASE_URL="https://github.com/${{ github.repository }}/releases/latest/download"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
           echo "mandatory=$MANDATORY" >> "$GITHUB_OUTPUT"
           echo "release_notes=$RELEASE_NOTES" >> "$GITHUB_OUTPUT"
           echo "website_base_url=$WEBSITE_BASE_URL" >> "$GITHUB_OUTPUT"
           echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "release_base_url=$RELEASE_BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "latest_release_base_url=$LATEST_RELEASE_BASE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Configure Android signing when secrets exist
         env:
@@ -98,7 +102,7 @@ jobs:
             --build-name "${{ steps.vars.outputs.version_name }}" \
             --build-number "${{ steps.vars.outputs.build_number }}" \
             --dart-define=API_BASE_URL="${{ steps.vars.outputs.api_base_url }}" \
-            --dart-define=UPDATE_MANIFEST_URL="${{ steps.vars.outputs.website_base_url }}/releases/polyht_admin_latest.json"
+            --dart-define=UPDATE_MANIFEST_URL="${{ steps.vars.outputs.latest_release_base_url }}/polyht_admin_latest.json"
 
       - name: Build Student APK
         working-directory: apps/polyht_student
@@ -108,7 +112,7 @@ jobs:
             --build-name "${{ steps.vars.outputs.version_name }}" \
             --build-number "${{ steps.vars.outputs.build_number }}" \
             --dart-define=API_BASE_URL="${{ steps.vars.outputs.api_base_url }}" \
-            --dart-define=UPDATE_MANIFEST_URL="${{ steps.vars.outputs.website_base_url }}/releases/polyht_student_latest.json"
+            --dart-define=UPDATE_MANIFEST_URL="${{ steps.vars.outputs.latest_release_base_url }}/polyht_student_latest.json"
 
       - name: Prepare website release files
         shell: bash
@@ -124,7 +128,7 @@ jobs:
             --argjson build "${{ steps.vars.outputs.build_number }}" \
             --argjson mandatory "${{ steps.vars.outputs.mandatory }}" \
             --arg notes "${{ steps.vars.outputs.release_notes }}" \
-            --arg download "${{ steps.vars.outputs.website_base_url }}/releases/$ADMIN_APK" \
+            --arg download "${{ steps.vars.outputs.release_base_url }}/$ADMIN_APK" \
             '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download}' \
             > public/releases/polyht_admin_latest.json
           jq -n \
@@ -133,7 +137,7 @@ jobs:
             --argjson build "${{ steps.vars.outputs.build_number }}" \
             --argjson mandatory "${{ steps.vars.outputs.mandatory }}" \
             --arg notes "${{ steps.vars.outputs.release_notes }}" \
-            --arg download "${{ steps.vars.outputs.website_base_url }}/releases/$STUDENT_APK" \
+            --arg download "${{ steps.vars.outputs.release_base_url }}/$STUDENT_APK" \
             '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download}' \
             > public/releases/polyht_student_latest.json
           printf '%s\n' \
