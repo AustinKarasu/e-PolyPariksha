@@ -162,13 +162,42 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _TestCard extends StatelessWidget {
+class _TestCard extends StatefulWidget {
   const _TestCard({required this.test, required this.onChanged});
 
   final TestPaper test;
   final VoidCallback onChanged;
 
+  @override
+  State<_TestCard> createState() => _TestCardState();
+}
+
+class _TestCardState extends State<_TestCard> {
+  bool _busy = false;
+
+  TestPaper get test => widget.test;
+
   Color get _statusColor => test.isActive ? AppTheme.success : AppTheme.error;
+
+  Future<void> _runAction(Future<void> Function() action, {String? successMessage}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (!mounted) return;
+      if (successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+      }
+      widget.onChanged();
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +276,7 @@ class _TestCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _toggleActive(context),
+                    onPressed: _busy ? null : _toggleActive,
                     icon: Icon(test.isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
                     label: Text(test.isActive ? 'Cancel' : 'Reactivate'),
                   ),
@@ -255,7 +284,7 @@ class _TestCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: test.isActive ? () => _endNow(context) : null,
+                    onPressed: test.isActive && !_busy ? _endNow : null,
                     icon: const Icon(Icons.stop_circle_outlined, size: 18),
                     label: const Text('End Now'),
                   ),
@@ -269,7 +298,7 @@ class _TestCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _viewPdf(context),
+                    onPressed: _busy ? null : _viewPdf,
                     icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                     label: const Text('View PDF'),
                   ),
@@ -277,7 +306,7 @@ class _TestCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _replacePdf(context),
+                    onPressed: _busy ? null : _replacePdf,
                     icon: const Icon(Icons.swap_horiz_rounded, size: 18),
                     label: const Text('Re-upload'),
                   ),
@@ -291,10 +320,12 @@ class _TestCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _delete(context),
+                    onPressed: _busy ? null : _delete,
                     style: OutlinedButton.styleFrom(foregroundColor: AppTheme.error, side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3))),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                    label: const Text('Remove'),
+                    icon: _busy
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: Text(_busy ? 'Removing...' : 'Remove'),
                   ),
                 ),
               ],
@@ -305,7 +336,7 @@ class _TestCard extends StatelessWidget {
     );
   }
 
-  Future<void> _replacePdf(BuildContext context) async {
+  Future<void> _replacePdf() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -313,16 +344,18 @@ class _TestCard extends StatelessWidget {
     );
     final file = result?.files.single;
     if (file == null || (file.path == null && file.bytes == null)) return;
-    await TestService().replacePdf(
-      testId: test.id,
-      pdfPath: file.path,
-      pdfBytes: file.bytes,
-      pdfName: file.name,
+    await _runAction(
+      () => TestService().replacePdf(
+        testId: test.id,
+        pdfPath: file.path,
+        pdfBytes: file.bytes,
+        pdfName: file.name,
+      ),
+      successMessage: 'PDF replaced',
     );
-    onChanged();
   }
 
-  Future<void> _viewPdf(BuildContext context) async {
+  Future<void> _viewPdf() async {
     try {
       final path = await TestService().downloadPdf(test.id);
       if (!context.mounted) return;
@@ -336,12 +369,14 @@ class _TestCard extends StatelessWidget {
     }
   }
 
-  Future<void> _toggleActive(BuildContext context) async {
-    await TestService().setTestActive(testId: test.id, isActive: !test.isActive);
-    onChanged();
+  Future<void> _toggleActive() async {
+    await _runAction(
+      () => TestService().setTestActive(testId: test.id, isActive: !test.isActive),
+      successMessage: test.isActive ? 'Test hidden' : 'Test reactivated',
+    );
   }
 
-  Future<void> _endNow(BuildContext context) async {
+  Future<void> _endNow() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -354,11 +389,10 @@ class _TestCard extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
-    await TestService().endTestNow(test.id);
-    onChanged();
+    await _runAction(() => TestService().endTestNow(test.id), successMessage: 'Test ended');
   }
 
-  Future<void> _delete(BuildContext context) async {
+  Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -375,7 +409,6 @@ class _TestCard extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
-    await TestService().deleteTest(test.id);
-    onChanged();
+    await _runAction(() => TestService().deleteTest(test.id), successMessage: 'Test removed');
   }
 }

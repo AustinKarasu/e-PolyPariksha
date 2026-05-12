@@ -25,6 +25,27 @@ async function ensureRuntimeSchema() {
         DROP CONSTRAINT IF EXISTS tests_semester_check;
       ALTER TABLE tests
         ADD CONSTRAINT tests_semester_check CHECK (semester BETWEEN 1 AND 6);
+
+      ALTER TABLE test_attempts
+        DROP CONSTRAINT IF EXISTS test_attempts_test_id_fkey,
+        DROP CONSTRAINT IF EXISTS fk_attempts_test;
+      ALTER TABLE test_attempts
+        ADD CONSTRAINT test_attempts_test_id_fkey
+          FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE;
+
+      ALTER TABLE exam_events
+        DROP CONSTRAINT IF EXISTS exam_events_attempt_id_fkey,
+        DROP CONSTRAINT IF EXISTS fk_events_attempt;
+      ALTER TABLE exam_events
+        ADD CONSTRAINT exam_events_attempt_id_fkey
+          FOREIGN KEY (attempt_id) REFERENCES test_attempts(id) ON DELETE SET NULL;
+
+      ALTER TABLE exam_events
+        DROP CONSTRAINT IF EXISTS exam_events_test_id_fkey,
+        DROP CONSTRAINT IF EXISTS fk_events_test;
+      ALTER TABLE exam_events
+        ADD CONSTRAINT exam_events_test_id_fkey
+          FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE;
     `).catch((err) => {
       runtimeSchemaReady = null;
       throw err;
