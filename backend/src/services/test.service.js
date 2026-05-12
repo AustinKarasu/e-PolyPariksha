@@ -39,6 +39,7 @@ async function listAdminTests() {
     `SELECT t.id, t.title, t.pdf_path, t.pdf_original_name, t.pdf_size, t.semester, t.scheduled_start, t.scheduled_end,
             t.time_limit_minutes, t.is_active, b.name AS branch_name, b.code AS branch_code
      FROM tests t JOIN branches b ON b.id = t.branch_id
+     WHERE t.deleted_at IS NULL
      ORDER BY t.scheduled_start DESC`
   );
 }
@@ -52,6 +53,7 @@ async function listStudentTests(user) {
      LEFT JOIN test_attempts a ON a.test_id = t.id AND a.student_id = $1
      WHERE t.branch_id = $2 AND t.semester = $3
        AND (t.is_active = true OR t.scheduled_end < CURRENT_TIMESTAMP)
+       AND t.deleted_at IS NULL
      ORDER BY t.scheduled_start DESC`,
     [user.sub, user.branchId, user.semester]
   );
@@ -150,22 +152,16 @@ async function replacePdf(id, file) {
 }
 
 async function removeTest(id) {
-  const existing = await transaction(async (tx) => {
-    const rows = await tx('SELECT id, pdf_path FROM tests WHERE id = $1 FOR UPDATE', [id]);
+  await transaction(async (tx) => {
+    const rows = await tx('SELECT id FROM tests WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]);
     if (!rows[0]) throw new ApiError(404, 'Test not found');
-
     await tx(
-      `DELETE FROM exam_events
-       WHERE test_id = $1
-          OR attempt_id IN (SELECT id FROM test_attempts WHERE test_id = $1)`,
+      `UPDATE tests
+       SET deleted_at = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
       [id]
     );
-    await tx('DELETE FROM test_attempts WHERE test_id = $1', [id]);
-    await tx('DELETE FROM tests WHERE id = $1', [id]);
-    return rows[0];
   });
-
-  await storageService.deletePdf(existing.pdf_path);
 }
 
 async function getStudentPdf(testId, user, context = {}) {

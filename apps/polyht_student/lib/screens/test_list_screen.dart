@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_theme.dart';
 import '../models/student_test.dart';
+import '../services/notification_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/test_service.dart';
 import '../widgets/app_drawer.dart';
@@ -24,7 +25,13 @@ class _TestListScreenState extends State<TestListScreen> {
   @override
   void initState() {
     super.initState();
-    _tests = _service.fetchTests();
+    _tests = _loadTests();
+  }
+
+  Future<List<StudentTest>> _loadTests() async {
+    final tests = await _service.fetchTests();
+    await NotificationService.instance.scheduleTests(tests);
+    return tests;
   }
 
   @override
@@ -93,7 +100,7 @@ class _TestListScreenState extends State<TestListScreen> {
         ],
         body: RefreshIndicator(
           color: AppTheme.primary,
-          onRefresh: () async => setState(() => _tests = _service.fetchTests()),
+          onRefresh: () async => setState(() => _tests = _loadTests()),
           child: FutureBuilder<List<StudentTest>>(
             future: _tests,
             builder: (context, snapshot) {
@@ -122,7 +129,7 @@ class _TestListScreenState extends State<TestListScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) => _StudentTestCard(
                   test: tests[index],
-                  onRefresh: () => setState(() => _tests = _service.fetchTests()),
+                  onRefresh: () => setState(() => _tests = _loadTests()),
                 ),
               );
             },

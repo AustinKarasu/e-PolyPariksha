@@ -25,7 +25,8 @@ async function ensureRuntimeSchema() {
         ADD COLUMN IF NOT EXISTS pdf_data BYTEA,
         ADD COLUMN IF NOT EXISTS pdf_original_name VARCHAR(255),
         ADD COLUMN IF NOT EXISTS pdf_mime_type VARCHAR(120) DEFAULT 'application/pdf',
-        ADD COLUMN IF NOT EXISTS pdf_size INT;
+        ADD COLUMN IF NOT EXISTS pdf_size INT,
+        ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
       ALTER TABLE tests
         DROP CONSTRAINT IF EXISTS tests_semester_check;
       ALTER TABLE tests
