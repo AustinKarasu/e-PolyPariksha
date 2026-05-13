@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -6,6 +7,7 @@ import '../config/app_theme.dart';
 import '../models/admin_account.dart';
 import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
+import '../services/excel_bulk_service.dart';
 
 class AdminAccountsScreen extends StatefulWidget {
   const AdminAccountsScreen({super.key});
@@ -16,7 +18,9 @@ class AdminAccountsScreen extends StatefulWidget {
 
 class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
   final _service = AdminService();
+  final _bulkService = ExcelBulkService();
   late Future<List<AdminAccount>> _admins;
+  bool _bulkBusy = false;
 
   @override
   void initState() {
@@ -33,6 +37,16 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
         title: const Text('Admin Accounts'),
         flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
         actions: [
+          IconButton(
+            tooltip: 'Import Excel',
+            icon: const Icon(Icons.upload_file_rounded),
+            onPressed: _bulkBusy ? null : _importAdmins,
+          ),
+          IconButton(
+            tooltip: 'Export Excel',
+            icon: const Icon(Icons.download_rounded),
+            onPressed: _bulkBusy ? null : _exportAdmins,
+          ),
           IconButton(
             tooltip: 'My 2FA',
             icon: const Icon(Icons.verified_user_outlined),
@@ -106,6 +120,57 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
+    }
+  }
+
+  Future<void> _importAdmins() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
+    final file = result?.files.single;
+    final bytes = file?.bytes;
+    if (bytes == null) return;
+
+    setState(() => _bulkBusy = true);
+    try {
+      final importResult = await _bulkService.importAdmins(bytes);
+      _refresh();
+      if (!mounted) return;
+      final details = importResult.messages.take(8).join('\n');
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Admin import complete'),
+          content: SingleChildScrollView(
+            child: Text(details.isEmpty ? importResult.summary : '${importResult.summary}\n\n$details'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          ],
+        ),
+      );
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  Future<void> _exportAdmins() async {
+    setState(() => _bulkBusy = true);
+    try {
+      final admins = await _service.fetchAdmins();
+      final file = await _bulkService.exportAdmins(admins);
+      await _bulkService.open(file);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported ${admins.length} admins')));
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
     }
   }
 

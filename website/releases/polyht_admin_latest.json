@@ -1,8 +1,8 @@
 {
   "appId": "polyht_admin",
-  "latestVersion": "1.0.19",
-  "latestBuild": 29,
+  "latestVersion": "1.0.32",
+  "latestBuild": 32,
   "mandatory": true,
-  "releaseNotes": "Required update: fixes 2FA login flow and connects student test history to database-backed ended-test records.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.19/polyht-admin-v1.0.19+29.apk"
+  "releaseNotes": "Required update: adds Excel import and export for students and admin accounts.",
+  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.32/polyht-admin-v1.0.32+32.apk"
 }

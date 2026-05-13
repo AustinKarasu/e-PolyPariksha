@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../models/app_user.dart';
 import '../models/branch.dart';
+import '../services/excel_bulk_service.dart';
 import '../services/student_service.dart';
 import '../services/test_service.dart';
 import '../utils/photo_image.dart';
@@ -18,8 +19,11 @@ class StudentListScreen extends StatefulWidget {
 
 class _StudentListScreenState extends State<StudentListScreen> {
   final _service = StudentService();
+  final _bulkService = ExcelBulkService();
+  final _testService = TestService();
   final _searchController = TextEditingController();
   late Future<List<AppUser>> _students;
+  bool _bulkBusy = false;
 
   @override
   void initState() {
@@ -43,6 +47,18 @@ class _StudentListScreenState extends State<StudentListScreen> {
       appBar: AppBar(
         title: const Text('Student Directory'),
         flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
+        actions: [
+          IconButton(
+            tooltip: 'Import Excel',
+            icon: const Icon(Icons.upload_file_rounded),
+            onPressed: _bulkBusy ? null : _importStudents,
+          ),
+          IconButton(
+            tooltip: 'Export Excel',
+            icon: const Icon(Icons.download_rounded),
+            onPressed: _bulkBusy ? null : _exportStudents,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddStudent,
@@ -117,6 +133,62 @@ class _StudentListScreenState extends State<StudentListScreen> {
     if (created == true && mounted) {
       setState(() => _students = _service.fetchStudents(search: _searchController.text.trim()));
     }
+  }
+
+  Future<void> _importStudents() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
+    final file = result?.files.single;
+    final bytes = file?.bytes;
+    if (bytes == null) return;
+
+    setState(() => _bulkBusy = true);
+    try {
+      final branches = await _testService.fetchBranches();
+      final importResult = await _bulkService.importStudents(bytes, branches);
+      if (!mounted) return;
+      _showImportResult(importResult);
+      setState(() => _students = _service.fetchStudents(search: _searchController.text.trim()));
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  Future<void> _exportStudents() async {
+    setState(() => _bulkBusy = true);
+    try {
+      final students = await _service.fetchAllStudents();
+      final file = await _bulkService.exportStudents(students);
+      await _bulkService.open(file);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported ${students.length} students')));
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  void _showImportResult(BulkImportResult result) {
+    final details = result.messages.take(8).join('\n');
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Student import complete'),
+        content: SingleChildScrollView(
+          child: Text(details.isEmpty ? result.summary : '${result.summary}\n\n$details'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+        ],
+      ),
+    );
   }
 }
 

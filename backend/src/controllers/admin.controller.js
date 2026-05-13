@@ -40,6 +40,15 @@ async function setPrimaryAdmin(req, res, next) {
   }
 }
 
+async function updateAdmin(req, res, next) {
+  try {
+    const admin = await adminService.updateAdmin(Number(req.params.id), req.body, req.user.sub);
+    res.json({ admin });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function deleteAdmin(req, res, next) {
   try {
     await adminService.deleteAdmin(Number(req.params.id), req.user.sub);
@@ -58,4 +67,4 @@ async function clearData(req, res, next) {
   }
 }
 
-module.exports = { listAdmins, createAdmin, setAdminActive, setPrimaryAdmin, deleteAdmin, clearData };
+module.exports = { listAdmins, createAdmin, updateAdmin, setAdminActive, setPrimaryAdmin, deleteAdmin, clearData };

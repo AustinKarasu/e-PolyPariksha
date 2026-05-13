@@ -24,6 +24,23 @@ router.post(
   adminController.createAdmin
 );
 router.patch(
+  '/:id',
+  [
+    body('fullName').optional().trim().isLength({ min: 2, max: 120 }),
+    body('email').optional().isEmail().normalizeEmail(),
+    body('password').optional({ nullable: true, checkFalsy: true }).isStrongPassword({
+      minLength: 10,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1
+    }),
+    body('isActive').optional().isBoolean()
+  ],
+  validate,
+  adminController.updateAdmin
+);
+router.patch(
   '/:id/active',
   [body('isActive').isBoolean()],
   validate,

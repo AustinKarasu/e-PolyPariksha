@@ -50,4 +50,19 @@ class AdminService {
       'sessions': sessions,
     });
   }
+
+  Future<void> updateAdmin({
+    required int id,
+    String? fullName,
+    String? email,
+    String? password,
+    bool? isActive,
+  }) async {
+    await _apiClient.patch('/admins/$id', {
+      if (fullName != null && fullName.isNotEmpty) 'fullName': fullName,
+      if (email != null && email.isNotEmpty) 'email': email,
+      if (password != null && password.isNotEmpty) 'password': password,
+      if (isActive != null) 'isActive': isActive,
+    });
+  }
 }

@@ -5,13 +5,28 @@ class StudentService {
   StudentService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
   final ApiClient _apiClient;
 
-  Future<List<AppUser>> fetchStudents({int? branchId, String? search}) async {
+  Future<List<AppUser>> fetchStudents({int? branchId, String? search, int? limit, int? offset}) async {
     final params = <String>[];
     if (branchId != null) params.add('branchId=$branchId');
     if (search != null && search.isNotEmpty) params.add('search=${Uri.encodeQueryComponent(search)}');
+    if (limit != null) params.add('limit=$limit');
+    if (offset != null) params.add('offset=$offset');
     final query = params.isEmpty ? '' : '?${params.join('&')}';
     final data = await _apiClient.get('/students$query');
     return (data['students'] as List).map((j) => AppUser.fromJson(j)).toList();
+  }
+
+  Future<List<AppUser>> fetchAllStudents() async {
+    final all = <AppUser>[];
+    var offset = 0;
+    const limit = 500;
+    while (true) {
+      final page = await fetchStudents(limit: limit, offset: offset);
+      all.addAll(page);
+      if (page.length < limit) break;
+      offset += limit;
+    }
+    return all;
   }
 
   Future<AppUser> fetchStudent(int id) async {
