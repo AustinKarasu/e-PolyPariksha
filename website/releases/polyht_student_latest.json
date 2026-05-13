@@ -1,8 +1,8 @@
 {
   "appId": "polyht_student",
   "latestVersion": "1.0.32",
-  "latestBuild": 32,
+  "latestBuild": 33,
   "mandatory": true,
   "releaseNotes": "Required update: adds Excel import and export for students and admin accounts.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.32/polyht-student-v1.0.32+32.apk"
+  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.32/polyht-student-v1.0.32+33.apk"
 }
