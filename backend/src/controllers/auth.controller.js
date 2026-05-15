@@ -23,6 +23,15 @@ async function me(req, res, next) {
   }
 }
 
+async function registerAdmin(req, res, next) {
+  try {
+    const admin = await authService.registerAdmin(req.body);
+    res.status(201).json({ admin });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateMe(req, res, next) {
   try {
     const user = await authService.updateCurrentUser(req.user.sub, req.body);
@@ -92,6 +101,7 @@ async function logout(req, res, next) {
 
 module.exports = {
   login,
+  registerAdmin,
   me,
   updateMe,
   updateMyPhoto,

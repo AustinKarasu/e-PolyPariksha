@@ -7,6 +7,10 @@ const { validate } = require('../middleware/validate.middleware');
 router.use(authenticate, requireRole('admin'));
 
 router.get('/', adminController.listAdmins);
+router.get('/applications', adminController.listApplications);
+router.post('/applications/:id/approve', adminController.approveApplication);
+router.post('/applications/:id/reject', adminController.rejectApplication);
+router.delete('/applications/:id', adminController.deleteApplication);
 router.post(
   '/',
   [
@@ -55,7 +59,9 @@ router.post(
     body('tests').optional().isBoolean(),
     body('history').optional().isBoolean(),
     body('students').optional().isBoolean(),
-    body('sessions').optional().isBoolean()
+    body('sessions').optional().isBoolean(),
+    body('logs').optional().isBoolean(),
+    body('applications').optional().isBoolean()
   ],
   validate,
   adminController.clearData

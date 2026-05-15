@@ -51,6 +51,28 @@ class AuthService {
     await _tokenStorage.clear();
   }
 
+  Future<void> registerAdmin({
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    required String mobile,
+    required String email,
+    required String college,
+    required String state,
+    required String password,
+  }) async {
+    await _apiClient.post('/auth/register-admin', {
+      'firstName': firstName,
+      if (middleName != null && middleName.trim().isNotEmpty) 'middleName': middleName.trim(),
+      'lastName': lastName,
+      'mobile': mobile,
+      'email': email,
+      'college': college,
+      'state': state,
+      'password': password,
+    });
+  }
+
   Future<AppUser> updateProfile({
     required String fullName,
     String? email,

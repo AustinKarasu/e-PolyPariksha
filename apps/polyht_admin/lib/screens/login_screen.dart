@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_theme.dart';
 import '../providers/auth_provider.dart';
+import 'admin_register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -219,6 +220,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         )
                                       : Text(showTotp ? 'Verify & sign in' : 'Sign in'),
                                 ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: auth.isLoading
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => const AdminRegisterScreen()),
+                                        ),
+                                child: const Text('Register admin account'),
                               ),
                             ],
                           ),

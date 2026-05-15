@@ -45,10 +45,12 @@ class StudentService {
     int? semester,
     String? rollNo,
     String? courseName,
+    String? collegeName,
     String? guardianName,
     String? phone,
     String? address,
     int? admissionYear,
+    int? dropoutYear,
   }) async {
     final data = await _apiClient.post('/students', {
       'fullName': fullName,
@@ -61,10 +63,12 @@ class StudentService {
       if (semester != null) 'semester': semester,
       if (rollNo != null && rollNo.isNotEmpty) 'rollNo': rollNo,
       if (courseName != null && courseName.isNotEmpty) 'courseName': courseName,
+      if (collegeName != null && collegeName.isNotEmpty) 'collegeName': collegeName,
       if (guardianName != null && guardianName.isNotEmpty) 'guardianName': guardianName,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
       if (address != null && address.isNotEmpty) 'address': address,
       if (admissionYear != null) 'admissionYear': admissionYear,
+      if (dropoutYear != null) 'dropoutYear': dropoutYear,
     });
     return AppUser.fromJson(data['student']);
   }
@@ -81,10 +85,12 @@ class StudentService {
     String? boardRollNo,
     String? dob,
     String? courseName,
+    String? collegeName,
     String? guardianName,
     String? phone,
     String? address,
     int? admissionYear,
+    int? dropoutYear,
     bool? isActive,
   }) async {
     final data = await _apiClient.patch('/students/$id', {
@@ -98,10 +104,12 @@ class StudentService {
       if (rollNo != null && rollNo.isNotEmpty) 'rollNo': rollNo,
       if (boardRollNo != null && boardRollNo.isNotEmpty) 'boardRollNo': boardRollNo,
       if (courseName != null && courseName.isNotEmpty) 'courseName': courseName,
+      if (collegeName != null && collegeName.isNotEmpty) 'collegeName': collegeName,
       if (guardianName != null && guardianName.isNotEmpty) 'guardianName': guardianName,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
       if (address != null && address.isNotEmpty) 'address': address,
       if (admissionYear != null) 'admissionYear': admissionYear,
+      if (dropoutYear != null) 'dropoutYear': dropoutYear,
       if (isActive != null) 'isActive': isActive,
     });
     return AppUser.fromJson(data['student']);

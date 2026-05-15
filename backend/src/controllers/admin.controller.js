@@ -2,8 +2,17 @@ const adminService = require('../services/admin.service');
 
 async function listAdmins(_req, res, next) {
   try {
-    const admins = await adminService.listAdmins();
+    const admins = await adminService.listAdmins(req.user.sub);
     res.json({ admins });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function listApplications(req, res, next) {
+  try {
+    const applications = await adminService.listApplications(req.user.sub);
+    res.json({ applications });
   } catch (err) {
     next(err);
   }
@@ -13,6 +22,33 @@ async function createAdmin(req, res, next) {
   try {
     const admin = await adminService.createAdmin(req.body, req.user.sub);
     res.status(201).json({ admin });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function approveApplication(req, res, next) {
+  try {
+    const admin = await adminService.approveApplication(Number(req.params.id), req.user.sub);
+    res.status(201).json({ admin });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function rejectApplication(req, res, next) {
+  try {
+    await adminService.rejectApplication(Number(req.params.id), req.user.sub);
+    res.json({ status: 'rejected' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteApplication(req, res, next) {
+  try {
+    await adminService.deleteApplication(Number(req.params.id), req.user.sub);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
@@ -67,4 +103,16 @@ async function clearData(req, res, next) {
   }
 }
 
-module.exports = { listAdmins, createAdmin, updateAdmin, setAdminActive, setPrimaryAdmin, deleteAdmin, clearData };
+module.exports = {
+  listAdmins,
+  listApplications,
+  createAdmin,
+  approveApplication,
+  rejectApplication,
+  deleteApplication,
+  updateAdmin,
+  setAdminActive,
+  setPrimaryAdmin,
+  deleteAdmin,
+  clearData
+};

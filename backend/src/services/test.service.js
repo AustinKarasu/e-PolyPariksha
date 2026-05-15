@@ -34,13 +34,28 @@ async function getTestById(id) {
   return rows[0];
 }
 
-async function listAdminTests() {
+async function isPrimaryAdmin(adminId) {
+  const rows = await query(
+    'SELECT is_primary_admin FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1',
+    [adminId, 'admin']
+  );
+  return rows[0]?.is_primary_admin === true;
+}
+
+async function listAdminTests(adminId) {
+  const params = [];
+  let scope = '';
+  if (adminId && !(await isPrimaryAdmin(adminId))) {
+    params.push(adminId);
+    scope = `AND t.created_by = $1`;
+  }
   return query(
     `SELECT t.id, t.title, t.pdf_path, t.pdf_original_name, t.pdf_size, t.semester, t.scheduled_start, t.scheduled_end,
             t.time_limit_minutes, t.is_active, b.name AS branch_name, b.code AS branch_code
      FROM tests t JOIN branches b ON b.id = t.branch_id
-     WHERE t.deleted_at IS NULL
-     ORDER BY t.scheduled_start DESC`
+     WHERE t.deleted_at IS NULL ${scope}
+     ORDER BY t.scheduled_start DESC`,
+    params
   );
 }
 
@@ -50,8 +65,10 @@ async function listStudentTests(user) {
             t.time_limit_minutes, a.id AS attempt_id, a.status AS attempt_status,
             a.blocked_reason, a.blocked_at, a.allowed_at, a.started_at, a.last_seen_at, a.completed_at
      FROM tests t
+     JOIN users u ON u.id = $1
      LEFT JOIN test_attempts a ON a.test_id = t.id AND a.student_id = $1
      WHERE t.branch_id = $2 AND t.semester = $3
+       AND (u.created_by_admin_id IS NULL OR t.created_by = u.created_by_admin_id)
        AND (t.is_active = true OR t.scheduled_end < CURRENT_TIMESTAMP)
        AND t.deleted_at IS NULL
      ORDER BY t.scheduled_start DESC`,
@@ -91,9 +108,11 @@ async function listStudentHistory(user) {
               ELSE NULL
             END AS active_seconds
      FROM tests t
+     JOIN users u ON u.id = $1
      LEFT JOIN test_attempts a ON a.test_id = t.id AND a.student_id = $1
      WHERE t.branch_id = $2
        AND t.semester = $3
+       AND (u.created_by_admin_id IS NULL OR t.created_by = u.created_by_admin_id)
        AND t.scheduled_end < CURRENT_TIMESTAMP
        AND t.scheduled_end >= CURRENT_TIMESTAMP - INTERVAL '30 days'
      ORDER BY t.scheduled_end DESC, t.scheduled_start DESC`,
@@ -107,8 +126,15 @@ async function listStudentHistory(user) {
   }));
 }
 
-async function updateTest(id, patch) {
-  await getTestById(id);
+async function assertAdminCanManageTest(test, adminId) {
+  if (adminId && !(await isPrimaryAdmin(adminId)) && test.created_by !== adminId) {
+    throw new ApiError(403, 'This test belongs to another admin account');
+  }
+}
+
+async function updateTest(id, patch, adminId) {
+  const test = await getTestById(id);
+  await assertAdminCanManageTest(test, adminId);
   await query(
     `UPDATE tests SET title = $1, branch_id = $2, semester = $3, scheduled_start = $4, scheduled_end = $5,
      time_limit_minutes = $6, is_active = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8`,
@@ -117,8 +143,9 @@ async function updateTest(id, patch) {
   return getTestById(id);
 }
 
-async function setTestActive(id, isActive) {
-  await getTestById(id);
+async function setTestActive(id, isActive, adminId) {
+  const test = await getTestById(id);
+  await assertAdminCanManageTest(test, adminId);
   await query(
     'UPDATE tests SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
     [isActive, id]
@@ -126,8 +153,9 @@ async function setTestActive(id, isActive) {
   return getTestById(id);
 }
 
-async function endTestNow(id) {
-  await getTestById(id);
+async function endTestNow(id, adminId) {
+  const test = await getTestById(id);
+  await assertAdminCanManageTest(test, adminId);
   await query(
     'UPDATE tests SET scheduled_end = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
     [id]
@@ -135,9 +163,10 @@ async function endTestNow(id) {
   return getTestById(id);
 }
 
-async function replacePdf(id, file) {
+async function replacePdf(id, file, adminId) {
   if (!file) throw new ApiError(422, 'PDF file is required');
   const existing = await getTestById(id);
+  await assertAdminCanManageTest(existing, adminId);
   const saved = await storageService.savePdf(file);
   const pdfBytes = await storageService.getUploadedFileBytes(file);
   await query(
@@ -151,10 +180,11 @@ async function replacePdf(id, file) {
   return getTestById(id);
 }
 
-async function removeTest(id) {
+async function removeTest(id, adminId) {
   await transaction(async (tx) => {
     const rows = await tx('SELECT id FROM tests WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]);
     if (!rows[0]) throw new ApiError(404, 'Test not found');
+    await assertAdminCanManageTest(await getTestById(id), adminId);
     await tx(
       `UPDATE tests
        SET deleted_at = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP
@@ -166,6 +196,9 @@ async function removeTest(id) {
 
 async function getStudentPdf(testId, user, context = {}) {
   const test = await getTestById(testId);
+  if (user.createdByAdminId && test.created_by !== user.createdByAdminId) {
+    throw new ApiError(403, 'This test is not assigned to your admin account');
+  }
   if (test.branch_id !== user.branchId) throw new ApiError(403, 'This test is not assigned to your branch');
   if (test.semester !== user.semester) throw new ApiError(403, 'This test is not assigned to your semester');
   const status = statusForTest(test);
@@ -179,8 +212,9 @@ async function getStudentPdf(testId, user, context = {}) {
   return storageService.getPdfDelivery(test.pdf_path, test);
 }
 
-async function getAdminPdf(testId) {
+async function getAdminPdf(testId, adminId) {
   const test = await getTestById(testId);
+  await assertAdminCanManageTest(test, adminId);
   return storageService.getPdfDelivery(test.pdf_path, test);
 }
 

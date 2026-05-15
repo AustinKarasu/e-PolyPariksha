@@ -40,7 +40,7 @@ async function recordEvent(req, res, next) {
 
 async function listEvents(req, res, next) {
   try {
-    const events = await attemptService.listEvents(req.query);
+    const events = await attemptService.listEvents(req.query, req.user);
     res.json({ events });
   } catch (err) {
     next(err);
@@ -49,7 +49,7 @@ async function listEvents(req, res, next) {
 
 async function listLocked(req, res, next) {
   try {
-    const attempts = await attemptService.listLockedAttempts(req.query);
+    const attempts = await attemptService.listLockedAttempts(req.query, req.user);
     res.json({ attempts });
   } catch (err) {
     next(err);

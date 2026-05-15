@@ -18,6 +18,7 @@ class AppDrawer extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final theme = context.watch<ThemeProvider>();
     final user = auth.user;
+    final isPrimaryAdmin = user?.isPrimaryAdmin == true;
 
     return Drawer(
       child: Column(
@@ -81,22 +82,24 @@ class AppDrawer extends StatelessWidget {
                     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StudentListScreen()));
                   },
                 ),
-                _DrawerItem(
-                  icon: Icons.admin_panel_settings_outlined,
-                  label: 'Admin Accounts',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminAccountsScreen()));
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.shield_outlined,
-                  label: 'Exam Security Logs',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SecurityLogScreen()));
-                  },
-                ),
+                if (isPrimaryAdmin)
+                  _DrawerItem(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Admin Accounts',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminAccountsScreen()));
+                    },
+                  ),
+                if (isPrimaryAdmin)
+                  _DrawerItem(
+                    icon: Icons.shield_outlined,
+                    label: 'Exam Security Logs',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SecurityLogScreen()));
+                    },
+                  ),
                 _DrawerItem(
                   icon: Icons.settings_outlined,
                   label: 'Settings',
@@ -140,7 +143,7 @@ class AppDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'PolyH.T Admin v1.0.0',
+              'Poly H.T v1.0.0',
               style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
             ),
           ),

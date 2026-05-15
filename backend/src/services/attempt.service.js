@@ -43,6 +43,7 @@ async function startAttempt(testId, user, context = {}) {
 }
 
 async function completeAttempt(testId, user, answerNote, context = {}) {
+  await getAssignedTestForUser(testId, user);
   const attempt = await getAttemptByStudent(testId, user.sub);
   if (!attempt) throw new ApiError(404, 'Attempt not found');
 
@@ -61,6 +62,7 @@ async function completeAttempt(testId, user, answerNote, context = {}) {
 }
 
 async function recordStudentEvent(testId, user, eventType, metadata = {}, context = {}) {
+  await getAssignedTestForUser(testId, user);
   const attempt = await getAttemptByStudent(testId, user.sub);
   if (!attempt) throw new ApiError(404, 'Attempt not found');
 
@@ -93,11 +95,27 @@ async function recordEvent({ attemptId, testId, studentId, branchId, eventType, 
   );
 }
 
-async function listEvents(filters = {}) {
+async function isPrimaryAdmin(adminId) {
+  const rows = await query(
+    'SELECT is_primary_admin FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1',
+    [adminId, 'admin']
+  );
+  return rows[0]?.is_primary_admin === true;
+}
+
+async function listEvents(filters = {}, adminUser) {
+  if (adminUser?.role === 'admin') {
+    const primary = await isPrimaryAdmin(adminUser.sub);
+    if (!primary) throw new ApiError(403, 'Only the superuser can view logs');
+  }
   const conditions = [];
   const params = [];
   let idx = 1;
 
+  if (adminUser?.sub && !(await isPrimaryAdmin(adminUser.sub))) {
+    conditions.push(`t.created_by = $${idx++}`);
+    params.push(adminUser.sub);
+  }
   if (filters.branchId) { conditions.push(`e.branch_id = $${idx++}`); params.push(filters.branchId); }
   if (filters.testId) { conditions.push(`e.test_id = $${idx++}`); params.push(filters.testId); }
   if (filters.studentId) { conditions.push(`e.student_id = $${idx++}`); params.push(filters.studentId); }
@@ -121,11 +139,19 @@ async function listEvents(filters = {}) {
   );
 }
 
-async function listLockedAttempts(filters = {}) {
+async function listLockedAttempts(filters = {}, adminUser) {
+  if (adminUser?.role === 'admin') {
+    const primary = await isPrimaryAdmin(adminUser.sub);
+    if (!primary) throw new ApiError(403, 'Only the superuser can view logs');
+  }
   const conditions = ["a.status = 'blocked'"];
   const params = [];
   let idx = 1;
 
+  if (adminUser?.sub && !(await isPrimaryAdmin(adminUser.sub))) {
+    conditions.push(`t.created_by = $${idx++}`);
+    params.push(adminUser.sub);
+  }
   if (filters.branchId) { conditions.push(`t.branch_id = $${idx++}`); params.push(filters.branchId); }
 
   return query(
@@ -146,11 +172,14 @@ async function listLockedAttempts(filters = {}) {
 
 async function allowAttempt(attemptId, adminUser, context = {}) {
   const rows = await query(
-    `SELECT a.*, t.branch_id FROM test_attempts a JOIN tests t ON t.id = a.test_id WHERE a.id = $1 LIMIT 1`,
+    `SELECT a.*, t.branch_id, t.created_by FROM test_attempts a JOIN tests t ON t.id = a.test_id WHERE a.id = $1 LIMIT 1`,
     [attemptId]
   );
   const attempt = rows[0];
   if (!attempt) throw new ApiError(404, 'Attempt not found');
+  if (!(await isPrimaryAdmin(adminUser.sub)) && attempt.created_by !== adminUser.sub) {
+    throw new ApiError(403, 'This attempt belongs to another admin account');
+  }
 
   await query(
     `UPDATE test_attempts SET status = 'admin_allowed', allowed_by = $1, allowed_at = CURRENT_TIMESTAMP, blocked_reason = NULL WHERE id = $2`,
@@ -215,14 +244,27 @@ async function recordEndedPdfAccess(test, user, context = {}) {
 }
 
 async function getAssignedLiveTestForUser(testId, user) {
-  const rows = await query(
-    `SELECT * FROM tests
-     WHERE id = $1 AND branch_id = $2 AND semester = $3 AND is_active = true
+  const test = await getAssignedTestForUser(testId, user);
+  const nowRows = await query(
+    `SELECT id FROM tests
+     WHERE id = $1 AND is_active = true
        AND CURRENT_TIMESTAMP BETWEEN scheduled_start AND scheduled_end
      LIMIT 1`,
-    [testId, user.branchId, user.semester]
+    [test.id]
   );
-  if (!rows[0]) throw new ApiError(403, 'This paper is not available for your branch and semester at this time.');
+  if (!nowRows[0]) throw new ApiError(403, 'This paper is not available for your branch and semester at this time.');
+  return test;
+}
+
+async function getAssignedTestForUser(testId, user) {
+  const rows = await query(
+    `SELECT * FROM tests
+     WHERE id = $1 AND branch_id = $2 AND semester = $3
+       AND ($4::int IS NULL OR created_by = $4)
+     LIMIT 1`,
+    [testId, user.branchId, user.semester, user.createdByAdminId || null]
+  );
+  if (!rows[0]) throw new ApiError(403, 'This paper is not assigned to your account.');
   return rows[0];
 }
 

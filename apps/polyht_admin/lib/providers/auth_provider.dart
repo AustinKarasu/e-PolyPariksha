@@ -63,6 +63,40 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> registerAdmin({
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    required String mobile,
+    required String email,
+    required String college,
+    required String state,
+    required String password,
+  }) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      await _authService.registerAdmin(
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        mobile: mobile,
+        email: email,
+        college: college,
+        state: state,
+        password: password,
+      );
+      return true;
+    } catch (err) {
+      error = err.toString();
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<Map<String, dynamic>> setupTwoFactor() => _authService.setupTwoFactor();
 
   Future<void> enableTwoFactor(String code) async {

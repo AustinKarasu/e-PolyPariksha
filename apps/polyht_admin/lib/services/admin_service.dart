@@ -1,4 +1,5 @@
 import '../models/admin_account.dart';
+import '../models/admin_application.dart';
 import 'api_client.dart';
 
 class AdminService {
@@ -27,6 +28,23 @@ class AdminService {
     await _apiClient.patch('/admins/$adminId/active', {'isActive': isActive});
   }
 
+  Future<List<AdminApplication>> fetchApplications() async {
+    final data = await _apiClient.get('/admins/applications');
+    return (data['applications'] as List).map((item) => AdminApplication.fromJson(item)).toList();
+  }
+
+  Future<void> approveApplication(int applicationId) async {
+    await _apiClient.post('/admins/applications/$applicationId/approve', {});
+  }
+
+  Future<void> rejectApplication(int applicationId) async {
+    await _apiClient.post('/admins/applications/$applicationId/reject', {});
+  }
+
+  Future<void> deleteApplication(int applicationId) async {
+    await _apiClient.delete('/admins/applications/$applicationId');
+  }
+
   Future<void> setPrimary(int adminId) async {
     await _apiClient.patch('/admins/$adminId/primary', {});
   }
@@ -41,6 +59,8 @@ class AdminService {
     required bool history,
     required bool students,
     required bool sessions,
+    bool logs = false,
+    bool applications = false,
   }) async {
     await _apiClient.post('/admins/clear-data', {
       'totpCode': totpCode,
@@ -48,6 +68,8 @@ class AdminService {
       'history': history,
       'students': students,
       'sessions': sessions,
+      'logs': logs,
+      'applications': applications,
     });
   }
 

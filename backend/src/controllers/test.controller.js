@@ -21,7 +21,7 @@ async function createTest(req, res, next) {
 async function listTests(req, res, next) {
   try {
     const tests = req.user.role === 'admin'
-      ? await testService.listAdminTests()
+      ? await testService.listAdminTests(req.user.sub)
       : await testService.listStudentTests(req.user);
     res.json({ tests });
   } catch (err) {
@@ -48,7 +48,7 @@ async function updateTest(req, res, next) {
       scheduledEnd: req.body.scheduledEnd,
       timeLimitMinutes: Number(req.body.timeLimitMinutes),
       isActive: Boolean(req.body.isActive)
-    });
+    }, req.user.sub);
     res.json({ test });
   } catch (err) {
     next(err);
@@ -57,7 +57,7 @@ async function updateTest(req, res, next) {
 
 async function setTestActive(req, res, next) {
   try {
-    const test = await testService.setTestActive(Number(req.params.id), req.body.isActive === true);
+    const test = await testService.setTestActive(Number(req.params.id), req.body.isActive === true, req.user.sub);
     res.json({ test });
   } catch (err) {
     next(err);
@@ -66,7 +66,7 @@ async function setTestActive(req, res, next) {
 
 async function endTestNow(req, res, next) {
   try {
-    const test = await testService.endTestNow(Number(req.params.id));
+    const test = await testService.endTestNow(Number(req.params.id), req.user.sub);
     res.json({ test });
   } catch (err) {
     next(err);
@@ -75,7 +75,7 @@ async function endTestNow(req, res, next) {
 
 async function replacePdf(req, res, next) {
   try {
-    const test = await testService.replacePdf(Number(req.params.id), req.file);
+    const test = await testService.replacePdf(Number(req.params.id), req.file, req.user.sub);
     res.json({ test });
   } catch (err) {
     next(err);
@@ -84,7 +84,7 @@ async function replacePdf(req, res, next) {
 
 async function removeTest(req, res, next) {
   try {
-    await testService.removeTest(Number(req.params.id));
+    await testService.removeTest(Number(req.params.id), req.user.sub);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -94,7 +94,7 @@ async function removeTest(req, res, next) {
 async function downloadPdf(req, res, next) {
   try {
     const delivery = req.user.role === 'admin'
-      ? await testService.getAdminPdf(Number(req.params.id))
+      ? await testService.getAdminPdf(Number(req.params.id), req.user.sub)
       : await testService.getStudentPdf(Number(req.params.id), req.user, {
           ipAddress: req.ip,
           userAgent: req.get('user-agent')
@@ -107,7 +107,7 @@ async function downloadPdf(req, res, next) {
 
 async function downloadAdminPdf(req, res, next) {
   try {
-    const delivery = await testService.getAdminPdf(Number(req.params.id));
+    const delivery = await testService.getAdminPdf(Number(req.params.id), req.user.sub);
     return sendPdfDelivery(res, delivery);
   } catch (err) {
     next(err);

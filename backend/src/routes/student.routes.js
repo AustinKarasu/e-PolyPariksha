@@ -37,13 +37,7 @@ router.post(
   [
     body('fullName').trim().isLength({ min: 2, max: 120 }),
     body('collegeId').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 2, max: 60 }),
-    body('password').optional({ nullable: true, checkFalsy: true }).isStrongPassword({
-      minLength: 8,
-      minLowercase: 1,
-      minUppercase: 1,
-      minNumbers: 1,
-      minSymbols: 1
-    }),
+    body('password').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 4, max: 80 }),
     body('branchId').isInt({ min: 1 }),
     body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(),
     body('dob').isISO8601(),
@@ -55,7 +49,8 @@ router.post(
     body('guardianName').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 120 }),
     body('phone').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }),
     body('address').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }),
-    body('admissionYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 })
+    body('admissionYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 }),
+    body('dropoutYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 })
   ],
   validate,
   studentController.adminCreateStudent
@@ -79,15 +74,10 @@ router.patch(
     body('phone').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }),
     body('address').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }),
     body('admissionYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 }),
+    body('dropoutYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 }),
     body('branchId').optional({ nullable: true, checkFalsy: true }).isInt({ min: 1 }),
     body('isActive').optional({ nullable: true }).isBoolean(),
-    body('password').optional({ nullable: true, checkFalsy: true }).isStrongPassword({
-      minLength: 8,
-      minLowercase: 1,
-      minUppercase: 1,
-      minNumbers: 1,
-      minSymbols: 1
-    })
+    body('password').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 4, max: 80 })
   ],
   validate,
   studentController.adminUpdateStudent

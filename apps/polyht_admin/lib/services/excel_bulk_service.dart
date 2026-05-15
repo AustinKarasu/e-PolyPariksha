@@ -46,9 +46,9 @@ class ExcelBulkService {
 
     for (final row in rows) {
       final number = row.rowNumber;
-      final fullName = row.value(['full_name', 'full name', 'name', 'student name']);
+      final fullName = row.value(['Name', 'full_name', 'full name', 'student name']);
       final collegeId = row.value(['college_id', 'college id', 'student id']);
-      final boardRollNo = row.value(['board_roll_no', 'board roll no', 'login id']);
+      final boardRollNo = row.value(['BR NO', 'board_roll_no', 'board roll no', 'login id']);
       final dob = row.value(['dob', 'date_of_birth', 'date of birth']);
       final password = row.value(['password', 'temporary password', 'temp password']);
       final branchKey = row.value(['branch_code', 'branch code', 'branch', 'branch_name', 'branch name', 'branch_id', 'branch id']);
@@ -68,16 +68,18 @@ class ExcelBulkService {
             boardRollNo: boardRollNo,
             dob: dob,
             collegeId: collegeId,
-            password: password,
+            password: password.isEmpty ? dob : password,
             branchId: branch.id,
             email: row.value(['email']),
             semester: _int(row.value(['semester', 'sem'])),
             rollNo: row.value(['roll_no', 'roll no']),
             courseName: row.value(['course_name', 'course', 'course name']),
-            guardianName: row.value(['guardian_name', 'guardian', 'guardian name']),
-            phone: row.value(['phone', 'mobile']),
+            collegeName: row.value(['college']),
+            guardianName: row.value(['Father Name', 'guardian_name', 'guardian', 'guardian name']),
+            phone: row.value(['Mobile No', 'phone', 'mobile']),
             address: row.value(['address']),
-            admissionYear: _int(row.value(['admission_year', 'admission year'])),
+            admissionYear: _int(row.value(['Joining year', 'admission_year', 'admission year'])),
+            dropoutYear: _int(row.value(['drop out year', 'dropout_year', 'dropout year'])),
           );
           byBoardRollNo[boardRollNo.toLowerCase()] = student;
           created++;
@@ -86,7 +88,7 @@ class ExcelBulkService {
             id: existingStudent.id,
             fullName: fullName,
             collegeId: collegeId,
-            password: password,
+            password: password.isEmpty ? dob : password,
             branchId: branch.id,
             email: row.value(['email']),
             dob: dob,
@@ -94,10 +96,12 @@ class ExcelBulkService {
             rollNo: row.value(['roll_no', 'roll no']),
             boardRollNo: boardRollNo,
             courseName: row.value(['course_name', 'course', 'course name']),
-            guardianName: row.value(['guardian_name', 'guardian', 'guardian name']),
-            phone: row.value(['phone', 'mobile']),
+            collegeName: row.value(['college']),
+            guardianName: row.value(['Father Name', 'guardian_name', 'guardian', 'guardian name']),
+            phone: row.value(['Mobile No', 'phone', 'mobile']),
             address: row.value(['address']),
-            admissionYear: _int(row.value(['admission_year', 'admission year'])),
+            admissionYear: _int(row.value(['Joining year', 'admission_year', 'admission year'])),
+            dropoutYear: _int(row.value(['drop out year', 'dropout_year', 'dropout year'])),
             isActive: _bool(row.value(['is_active', 'active', 'status'])) ?? existingStudent.isActive,
           );
           updated++;
@@ -165,38 +169,34 @@ class ExcelBulkService {
     final excel = Excel.createExcel();
     final sheet = _sheet(excel, 'Students');
     sheet.appendRow(_cells([
-      'full_name',
-      'college_id',
-      'password',
-      'dob',
-      'branch_code',
-      'semester',
+      'BR NO',
+      'Name',
+      'Father Name',
+      'Mobile No',
       'email',
-      'roll_no',
-      'board_roll_no',
-      'course_name',
-      'guardian_name',
-      'phone',
-      'address',
-      'admission_year',
+      'college',
+      'branch',
+      'semester',
+      'dob',
+      'password',
+      'Joining year',
+      'drop out year',
       'is_active',
     ]));
     for (final student in students) {
       sheet.appendRow(_cells([
-        student.fullName,
-        student.collegeId ?? '',
-        '',
-        student.dob ?? '',
-        student.branchCode ?? '',
-        student.semester?.toString() ?? '',
-        student.email ?? '',
-        student.rollNo ?? '',
         student.boardRollNo ?? '',
-        student.courseName ?? '',
+        student.fullName,
         student.guardianName ?? '',
         student.phone ?? '',
-        student.address ?? '',
+        student.email ?? '',
+        student.collegeName ?? '',
+        student.branchCode ?? student.branchName ?? '',
+        student.semester?.toString() ?? '',
+        student.dob ?? '',
+        student.dob ?? '',
         student.admissionYear?.toString() ?? '',
+        student.dropoutYear?.toString() ?? '',
         student.isActive == false ? 'false' : 'true',
       ]));
     }

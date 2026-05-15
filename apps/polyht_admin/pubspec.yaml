@@ -1,5 +1,5 @@
 name: polyht_admin
-description: PolyH.T Admin app for test paper management.
+description: Poly H.T combined admin and student app.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -21,7 +21,11 @@ dependencies:
   path_provider: ^2.1.2
   provider: ^6.1.2
   qr_flutter: ^4.1.0
+  shared_preferences: ^2.3.3
+  timezone: ^0.9.4
   url_launcher: ^6.3.1
+  flutter_local_notifications: ^17.2.4
+  wakelock_plus: ^1.1.6
 
 dev_dependencies:
   flutter_test:

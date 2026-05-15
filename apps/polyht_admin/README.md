@@ -1,4 +1,4 @@
-# PolyH.T Admin
+# Poly H.T
 
 Flutter admin app for managing Polytechnic House Test PDFs, schedules, branches, students, admin accounts, and exam security logs.
 

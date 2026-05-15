@@ -65,6 +65,57 @@ async function login(identifier, password, context = {}) {
   return { token, user: sanitizeUser(user) };
 }
 
+async function registerAdmin(payload) {
+  const firstName = String(payload.firstName || '').trim();
+  const middleName = String(payload.middleName || '').trim();
+  const lastName = String(payload.lastName || '').trim();
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+  if (!firstName || !lastName) throw new ApiError(422, 'First name and last name are required');
+
+  const passwordHash = await bcrypt.hash(payload.password, 12);
+  const existing = await query('SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1', [payload.email]);
+  if (existing[0]) throw new ApiError(409, 'An admin account with this email already exists');
+
+  try {
+    const rows = await query(
+      `INSERT INTO admin_applications (
+         first_name, middle_name, last_name, full_name, mobile, email,
+         college_name, state_name, password_hash, status
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+       ON CONFLICT (email) DO UPDATE SET
+         first_name = EXCLUDED.first_name,
+         middle_name = EXCLUDED.middle_name,
+         last_name = EXCLUDED.last_name,
+         full_name = EXCLUDED.full_name,
+         mobile = EXCLUDED.mobile,
+         college_name = EXCLUDED.college_name,
+         state_name = EXCLUDED.state_name,
+         password_hash = EXCLUDED.password_hash,
+         status = 'pending',
+         reviewed_by = NULL,
+         reviewed_at = NULL,
+         created_admin_id = NULL
+       RETURNING id, full_name, email, mobile, college_name, state_name, status, created_at`,
+      [
+        firstName,
+        middleName || null,
+        lastName,
+        fullName,
+        payload.mobile,
+        payload.email,
+        payload.college,
+        payload.state,
+        passwordHash
+      ]
+    );
+    return rows[0];
+  } catch (err) {
+    if (err.code === '23505') throw new ApiError(409, 'An application with this email already exists');
+    throw err;
+  }
+}
+
 async function getCurrentUser(userId) {
   const rows = await query(
     `SELECT u.id, u.full_name, u.email, u.college_id, u.role,
@@ -246,6 +297,7 @@ async function clearLoginFailures(identifier, ipAddress = '') {
 
 module.exports = {
   login,
+  registerAdmin,
   getCurrentUser,
   updateCurrentUser,
   updateCurrentUserPhoto,

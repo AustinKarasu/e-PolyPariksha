@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../config/app_theme.dart';
 import '../models/admin_account.dart';
+import '../models/admin_application.dart';
 import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
 import '../services/excel_bulk_service.dart';
@@ -20,19 +21,29 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
   final _service = AdminService();
   final _bulkService = ExcelBulkService();
   late Future<List<AdminAccount>> _admins;
+  late Future<List<AdminApplication>> _applications;
   bool _bulkBusy = false;
 
   @override
   void initState() {
     super.initState();
     _admins = _service.fetchAdmins();
+    _applications = _service.fetchApplications();
   }
 
-  void _refresh() => setState(() => _admins = _service.fetchAdmins());
+  void _refresh() => setState(() {
+        _admins = _service.fetchAdmins();
+        _applications = _service.fetchApplications();
+      });
 
   @override
   Widget build(BuildContext context) {
     final isPrimaryAdmin = context.watch<AuthProvider>().user?.isPrimaryAdmin == true;
+    if (!isPrimaryAdmin) {
+      return const Scaffold(
+        body: Center(child: Text('Only the superuser can manage admin accounts.')),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Accounts'),
@@ -54,7 +65,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
             onPressed: _manageMy2fa,
           ),
           IconButton(
-            tooltip: 'Clear data',
+            tooltip: 'Clear logs and applications',
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: _showClearDataDialog,
           ),
@@ -65,37 +76,102 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
         icon: const Icon(Icons.person_add_alt_1_rounded),
         label: const Text('Add Admin'),
       ),
-      body: FutureBuilder<List<AdminAccount>>(
-        future: _admins,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-          }
-          final admins = snapshot.data ?? [];
-          if (admins.isEmpty) {
-            return const Center(child: Text('No admin accounts found'));
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: admins.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => _AdminTile(
-              admin: admins[index],
-              canManagePrimary: isPrimaryAdmin,
-              onPrimary: () async {
-                await _service.setPrimary(admins[index].id);
-                _refresh();
+      body: RefreshIndicator(
+        color: AppTheme.primary,
+        onRefresh: () async => _refresh(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          children: [
+            Text('Applications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            FutureBuilder<List<AdminApplication>>(
+              future: _applications,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: AppTheme.primary)));
+                }
+                final applications = snapshot.data ?? [];
+                if (applications.isEmpty) return const _EmptyPanel(text: 'No admin applications');
+                return Column(
+                  children: [
+                    for (final application in applications) ...[
+                      _ApplicationTile(
+                        application: application,
+                        onApprove: () => _approveApplication(application),
+                        onReject: () => _rejectApplication(application),
+                        onDelete: () => _deleteApplication(application),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                );
               },
-              onToggle: () async {
-                await _service.setActive(admins[index].id, !admins[index].isActive);
-                _refresh();
-              },
-              onDelete: () => _confirmDelete(admins[index]),
             ),
-          );
-        },
+            const SizedBox(height: 18),
+            Text('Admins', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            FutureBuilder<List<AdminAccount>>(
+              future: _admins,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: AppTheme.primary)));
+                }
+                final admins = snapshot.data ?? [];
+                if (admins.isEmpty) return const _EmptyPanel(text: 'No admin accounts found');
+                return Column(
+                  children: [
+                    for (final admin in admins) ...[
+                      _AdminTile(
+                        admin: admin,
+                        canManagePrimary: isPrimaryAdmin,
+                        onPrimary: () async {
+                          await _service.setPrimary(admin.id);
+                          _refresh();
+                        },
+                        onToggle: () async {
+                          await _service.setActive(admin.id, !admin.isActive);
+                          _refresh();
+                        },
+                        onDelete: () => _confirmDelete(admin),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _approveApplication(AdminApplication application) async {
+    try {
+      await _service.approveApplication(application.id);
+      _refresh();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${application.fullName} approved')));
+    } catch (err) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
+  Future<void> _rejectApplication(AdminApplication application) async {
+    try {
+      await _service.rejectApplication(application.id);
+      _refresh();
+    } catch (err) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
+  Future<void> _deleteApplication(AdminApplication application) async {
+    try {
+      await _service.deleteApplication(application.id);
+      _refresh();
+    } catch (err) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+    }
   }
 
   Future<void> _confirmDelete(AdminAccount admin) async {
@@ -247,6 +323,8 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     bool history = false;
     bool students = false;
     bool sessions = false;
+    bool logs = false;
+    bool applications = false;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -274,6 +352,18 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                   onChanged: (value) => setDialogState(() => students = value ?? false),
                   title: const Text('Student accounts'),
                   subtitle: const Text('Deletes students and their sessions/history.'),
+                ),
+                CheckboxListTile(
+                  value: logs,
+                  onChanged: (value) => setDialogState(() => logs = value ?? false),
+                  title: const Text('All logs'),
+                  subtitle: const Text('Deletes exam events and login failure logs.'),
+                ),
+                CheckboxListTile(
+                  value: applications,
+                  onChanged: (value) => setDialogState(() => applications = value ?? false),
+                  title: const Text('All applications'),
+                  subtitle: const Text('Deletes pending, approved, and rejected admin applications.'),
                 ),
                 CheckboxListTile(
                   value: sessions,
@@ -312,6 +402,8 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
         history: history,
         students: students,
         sessions: sessions,
+        logs: logs,
+        applications: applications,
       );
       _refresh();
       if (mounted) {
@@ -452,6 +544,93 @@ class _AdminTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ApplicationTile extends StatelessWidget {
+  const _ApplicationTile({
+    required this.application,
+    required this.onApprove,
+    required this.onReject,
+    required this.onDelete,
+  });
+
+  final AdminApplication application;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = application.status == 'pending';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.1)),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(application.fullName, style: const TextStyle(fontWeight: FontWeight.w700))),
+              Chip(label: Text(application.status), visualDensity: VisualDensity.compact),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(application.email),
+          Text('${application.mobile} - ${application.collegeName}, ${application.stateName}', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: pending ? onApprove : null,
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                  label: const Text('Add'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: pending ? onReject : null,
+                  icon: const Icon(Icons.block_rounded, size: 18),
+                  label: const Text('Reject'),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remove application',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  const _EmptyPanel({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.1)),
+      ),
+      child: Text(text, textAlign: TextAlign.center),
     );
   }
 }

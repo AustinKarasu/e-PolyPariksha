@@ -18,6 +18,7 @@ class AppUser {
     this.phone,
     this.address,
     this.admissionYear,
+    this.dropoutYear,
     this.photoUrl,
     this.isActive,
     this.twoFactorEnabled,
@@ -42,6 +43,7 @@ class AppUser {
   final String? phone;
   final String? address;
   final int? admissionYear;
+  final int? dropoutYear;
   final String? photoUrl;
   final bool? isActive;
   final bool? twoFactorEnabled;
@@ -67,6 +69,7 @@ class AppUser {
       phone: json['phone'] as String?,
       address: json['address'] as String?,
       admissionYear: json['admission_year'] as int?,
+      dropoutYear: json['dropout_year'] as int?,
       photoUrl: json['photo_url'] as String?,
       isActive: json['is_active'] == true || json['is_active'] == 1,
       twoFactorEnabled: json['two_factor_enabled'] == true || json['two_factor_enabled'] == 1,

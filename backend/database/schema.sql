@@ -19,21 +19,27 @@ ON CONFLICT (code) DO NOTHING;
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   full_name VARCHAR(120) NOT NULL,
+  first_name VARCHAR(60),
+  middle_name VARCHAR(60),
+  last_name VARCHAR(60),
   email VARCHAR(160) UNIQUE,
   college_id VARCHAR(60) UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(10) NOT NULL CHECK (role IN ('admin', 'student')),
+  created_by_admin_id INT REFERENCES users(id),
   branch_id INT REFERENCES branches(id),
   dob DATE,
   semester SMALLINT,
   roll_no VARCHAR(40),
   board_roll_no VARCHAR(40),
   college_name VARCHAR(200) DEFAULT 'Govt. Polytechnic Kangra',
+  state_name VARCHAR(80),
   course_name VARCHAR(120),
   guardian_name VARCHAR(120),
   phone VARCHAR(20),
   address TEXT,
   admission_year INT,
+  dropout_year INT,
   photo_url TEXT,
   two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   two_factor_secret VARCHAR(160),
@@ -41,6 +47,24 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admin_applications (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(60) NOT NULL,
+  middle_name VARCHAR(60),
+  last_name VARCHAR(60) NOT NULL,
+  full_name VARCHAR(120) NOT NULL,
+  mobile VARCHAR(20) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  college_name VARCHAR(200) NOT NULL,
+  state_name VARCHAR(80) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by INT REFERENCES users(id),
+  reviewed_at TIMESTAMP,
+  created_admin_id INT REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tests (
@@ -59,7 +83,8 @@ CREATE TABLE IF NOT EXISTS tests (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_by INT NOT NULL REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS test_attempts (
@@ -105,12 +130,25 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   revoked_at TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS login_failures (
+  identifier_hash VARCHAR(64) NOT NULL,
+  ip_address VARCHAR(50) NOT NULL,
+  failed_count INT NOT NULL DEFAULT 0,
+  first_failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  locked_until TIMESTAMP,
+  PRIMARY KEY (identifier_hash, ip_address)
+);
+
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON test_attempts(student_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_test ON test_attempts(test_id);
 CREATE INDEX IF NOT EXISTS idx_events_attempt ON exam_events(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_events_test ON exam_events(test_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_jti ON auth_sessions(token_jti);
+CREATE INDEX IF NOT EXISTS idx_users_created_by_admin ON users(created_by_admin_id);
+CREATE INDEX IF NOT EXISTS idx_tests_created_by ON tests(created_by);
+CREATE INDEX IF NOT EXISTS idx_admin_applications_status ON admin_applications(status);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_primary_admin
   ON users (role)

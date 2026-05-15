@@ -19,6 +19,29 @@ router.post(
   authController.login
 );
 
+router.post(
+  '/register-admin',
+  authLimiter,
+  [
+    body('firstName').trim().isLength({ min: 2, max: 60 }),
+    body('middleName').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 60 }),
+    body('lastName').trim().isLength({ min: 2, max: 60 }),
+    body('mobile').trim().isLength({ min: 7, max: 20 }),
+    body('email').isEmail().normalizeEmail(),
+    body('college').trim().isLength({ min: 2, max: 200 }),
+    body('state').trim().isLength({ min: 2, max: 80 }),
+    body('password').isStrongPassword({
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1
+    })
+  ],
+  validate,
+  authController.registerAdmin
+);
+
 router.get('/me', authenticate, authController.me);
 router.patch(
   '/me',

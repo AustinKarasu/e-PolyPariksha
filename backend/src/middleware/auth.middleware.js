@@ -14,7 +14,7 @@ async function authenticate(req, _res, next) {
   try {
     const payload = jwt.verify(token, env.jwtSecret);
     const sessions = await query(
-      `SELECT s.id, u.branch_id, u.semester
+      `SELECT s.id, u.branch_id, u.semester, u.created_by_admin_id
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_jti = $1 AND s.revoked_at IS NULL AND s.expires_at > CURRENT_TIMESTAMP
@@ -27,7 +27,8 @@ async function authenticate(req, _res, next) {
     req.user = {
       ...payload,
       branchId: sessions[0].branch_id ?? payload.branchId,
-      semester: sessions[0].semester ?? payload.semester
+      semester: sessions[0].semester ?? payload.semester,
+      createdByAdminId: sessions[0].created_by_admin_id ?? payload.createdByAdminId
     };
     return next();
   } catch (_err) {

@@ -7,11 +7,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>PolyH.T Admin</string>
+	<string>Poly H.T</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PolyH.T Admin lets you choose a profile photo from your library.</string>
+	<string>Poly H.T lets you choose a profile photo from your library.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>PolyH.T Admin may use the camera when selecting a profile photo.</string>
+	<string>Poly H.T may use the camera when selecting a profile photo.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>PolyH.T Admin</string>
+	<string>Poly H.T</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
