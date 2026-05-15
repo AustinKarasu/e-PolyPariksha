@@ -91,7 +91,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: _state,
+                          initialValue: _state,
                           decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined)),
                           isExpanded: true,
                           items: indianStates.map((state) => DropdownMenuItem(value: state, child: Text(state))).toList(),

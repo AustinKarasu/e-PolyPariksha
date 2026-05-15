@@ -132,7 +132,7 @@ class AppDrawer extends StatelessWidget {
                   secondary: Icon(theme.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, color: AppTheme.primary),
                   title: const Text('Dark Mode', style: TextStyle(fontWeight: FontWeight.w500)),
                   value: theme.isDark,
-                  activeColor: AppTheme.primary,
+                  activeThumbColor: AppTheme.primary,
                   onChanged: (_) => theme.toggle(),
                 ),
                 const Divider(height: 24),

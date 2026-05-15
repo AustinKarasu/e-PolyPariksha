@@ -343,7 +343,7 @@ class _AddStudentScreenState extends State<_AddStudentScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<Branch>(
-                  value: _selectedBranch,
+                  initialValue: _selectedBranch,
                   decoration: const InputDecoration(labelText: 'Branch'),
                   items: branches.map((branch) {
                     return DropdownMenuItem(value: branch, child: Text('${branch.name} (${branch.code})'));
@@ -804,7 +804,7 @@ class _EditStudentScreenState extends State<_EditStudentScreen> {
                 TextFormField(controller: _collegeIdController, decoration: const InputDecoration(labelText: 'College ID (optional)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<Branch>(
-                  value: _selectedBranch,
+                  initialValue: _selectedBranch,
                   decoration: const InputDecoration(labelText: 'Branch'),
                   items: branches.map((branch) => DropdownMenuItem(value: branch, child: Text('${branch.name} (${branch.code})'))).toList(),
                   onChanged: _saving ? null : (branch) => setState(() => _selectedBranch = branch),

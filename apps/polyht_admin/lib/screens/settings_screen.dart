@@ -61,12 +61,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickPhoto() async {
+    final auth = context.read<AuthProvider>();
     final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
     final file = result?.files.single;
     if (file == null || (file.path == null && file.bytes == null)) return;
     setState(() => _saving = true);
     try {
-      await context.read<AuthProvider>().uploadProfilePhoto(
+      await auth.uploadProfilePhoto(
         imagePath: file.path,
         imageBytes: file.bytes,
         imageName: file.name,

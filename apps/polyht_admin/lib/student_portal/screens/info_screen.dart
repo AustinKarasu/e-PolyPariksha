@@ -20,7 +20,7 @@ class InfoScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _InfoTile(icon: Icons.person_rounded, label: 'Made by', value: 'Aayan Parmar'),
+          const _InfoTile(icon: Icons.person_rounded, label: 'Made by', value: 'Aayan Parmar'),
           _InfoTile(icon: Icons.phone_rounded, label: 'Contact', value: '8091726602', onTap: () => _open(_phoneUri)),
           _InfoTile(icon: Icons.email_rounded, label: 'Gmail', value: 'aayankarasu@gmail.com', onTap: () => _open(_mailUri)),
           _InfoTile(icon: Icons.language_rounded, label: 'College Website', value: 'https://gpkangra.edu.in', onTap: () => _open(_collegeUri)),

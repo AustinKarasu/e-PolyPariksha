@@ -108,7 +108,7 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
 
               // ── Branch dropdown ──
               DropdownButtonFormField<Branch>(
-                value: _selectedBranch,
+                initialValue: _selectedBranch,
                 decoration: const InputDecoration(
                   labelText: 'Branch',
                   prefixIcon: Icon(Icons.account_tree_outlined),
@@ -122,7 +122,7 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<int>(
-                value: _selectedSemester,
+                initialValue: _selectedSemester,
                 decoration: const InputDecoration(
                   labelText: 'Semester',
                   prefixIcon: Icon(Icons.school_outlined),

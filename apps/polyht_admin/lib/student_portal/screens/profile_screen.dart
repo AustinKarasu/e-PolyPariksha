@@ -97,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
 
             // ── ID Card section ──
-            _SectionHeader(title: 'College ID Card'),
+            const _SectionHeader(title: 'College ID Card'),
             _InfoCard(children: [
               _InfoRow(label: 'College', value: user.collegeName ?? 'Govt. Polytechnic Kangra'),
               _InfoRow(label: 'College ID', value: user.collegeId ?? '—'),
@@ -107,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
 
             // ── Academic Info ──
-            _SectionHeader(title: 'Academic Information'),
+            const _SectionHeader(title: 'Academic Information'),
             _InfoCard(children: [
               _InfoRow(label: 'Course', value: user.courseName ?? '—'),
               _InfoRow(label: 'Branch', value: user.branchName ?? '—'),
@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
 
             // ── Personal Info ──
-            _SectionHeader(title: 'Personal Details'),
+            const _SectionHeader(title: 'Personal Details'),
             _InfoCard(children: [
               _InfoRow(label: 'Full Name', value: user.fullName),
               _InfoRow(label: 'Date of Birth', value: user.dob ?? '—'),
@@ -126,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _InfoRow(label: 'Address', value: user.address ?? '—'),
             ]),
             const SizedBox(height: 16),
-            _SectionHeader(title: 'Account Security'),
+            const _SectionHeader(title: 'Account Security'),
             _InfoCard(children: [
               ListTile(
                 leading: const Icon(Icons.verified_user_outlined),

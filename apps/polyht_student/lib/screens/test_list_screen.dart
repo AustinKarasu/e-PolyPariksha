@@ -93,8 +93,8 @@ class _TestListScreenState extends State<TestListScreen> {
                 ),
               ),
             ),
-            actions: [
-              const UpdateButton(),
+            actions: const [
+              UpdateButton(),
             ],
           ),
         ],

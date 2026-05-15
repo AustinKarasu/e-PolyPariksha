@@ -345,6 +345,7 @@ class _TestCardState extends State<_TestCard> {
     final file = result?.files.single;
     if (file == null || (file.path == null && file.bytes == null)) return;
     if (file.size > 4 * 1024 * 1024) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('PDF is too large for mobile upload. Use a PDF under 4 MB.')),
       );
@@ -364,12 +365,12 @@ class _TestCardState extends State<_TestCard> {
   Future<void> _viewPdf() async {
     try {
       final path = await TestService().downloadPdf(test.id);
-      if (!context.mounted) return;
+      if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => AdminPdfViewerScreen(title: test.title, filePath: path)),
       );
     } catch (err) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
     }
