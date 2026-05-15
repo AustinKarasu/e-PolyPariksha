@@ -108,8 +108,10 @@ class _RoleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardColor = Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface;
+    final muted = Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65);
     return Material(
-      color: Colors.white,
+      color: cardColor,
       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -134,7 +136,7 @@ class _RoleButton extends StatelessWidget {
                   children: [
                     Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
-                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.ink.withValues(alpha: 0.6))),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: muted)),
                   ],
                 ),
               ),

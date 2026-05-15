@@ -82,8 +82,6 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            Text('Applications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
             FutureBuilder<List<AdminApplication>>(
               future: _applications,
               builder: (context, snapshot) {
@@ -91,19 +89,11 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                   return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: AppTheme.primary)));
                 }
                 final applications = snapshot.data ?? [];
-                if (applications.isEmpty) return const _EmptyPanel(text: 'No admin applications');
-                return Column(
-                  children: [
-                    for (final application in applications) ...[
-                      _ApplicationTile(
-                        application: application,
-                        onApprove: () => _approveApplication(application),
-                        onReject: () => _rejectApplication(application),
-                        onDelete: () => _deleteApplication(application),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
+                final pending = applications.where((application) => application.status == 'pending').length;
+                return _ApplicationsMenu(
+                  total: applications.length,
+                  pending: pending,
+                  onTap: () => _showApplicationsDialog(applications),
                 );
               },
             ),
@@ -142,6 +132,50 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showApplicationsDialog(List<AdminApplication> applications) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Admin Applications'),
+        content: SizedBox(
+          width: 560,
+          height: 460,
+          child: applications.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text('No admin applications', textAlign: TextAlign.center),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: applications.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final application = applications[index];
+                    return _ApplicationTile(
+                      application: application,
+                      onApprove: () {
+                        Navigator.of(context).pop();
+                        _approveApplication(application);
+                      },
+                      onReject: () {
+                        Navigator.of(context).pop();
+                        _rejectApplication(application);
+                      },
+                      onDelete: () {
+                        Navigator.of(context).pop();
+                        _deleteApplication(application);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+        ],
       ),
     );
   }
@@ -610,6 +644,61 @@ class _ApplicationTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ApplicationsMenu extends StatelessWidget {
+  const _ApplicationsMenu({required this.total, required this.pending, required this.onTap});
+
+  final int total;
+  final int pending;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          border: Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.12)),
+          boxShadow: AppTheme.cardShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.assignment_ind_outlined, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Applications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text(
+                    pending == 0 ? '$total total applications' : '$pending pending - $total total',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65),
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
     );
   }

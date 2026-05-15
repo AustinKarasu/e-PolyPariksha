@@ -49,6 +49,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final showTotp = _showTotp || auth.requiresTwoFactor;
+    final cardColor = Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface;
+    final muted = Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         width: 88,
                         height: 88,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cardColor,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -140,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               Text(
                                 'Manage branches, schedules, and question papers.',
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.ink.withValues(alpha: 0.55),
+                                      color: muted,
                                     ),
                               ),
                               const SizedBox(height: 28),
@@ -236,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Govt. Polytechnic Kangra',
+                        'Poly H.T',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.ink.withValues(alpha: 0.4),
@@ -271,6 +273,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         _showTotp = true;
         _totpController.clear();
       });
+    } else if (mounted && auth.isAuthenticated) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 

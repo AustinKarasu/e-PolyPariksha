@@ -19,6 +19,7 @@ class AppDrawer extends StatelessWidget {
     final theme = context.watch<ThemeProvider>();
     final user = auth.user;
     final isPrimaryAdmin = user?.isPrimaryAdmin == true;
+    final collegeName = user?.collegeName?.trim().isNotEmpty == true ? user!.collegeName! : 'Poly H.T';
 
     return Drawer(
       child: Column(
@@ -38,10 +39,12 @@ class AppDrawer extends StatelessWidget {
                       child: Image.asset('assets/images/polyht_logo.png', width: 52, height: 52, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Govt. Polytechnic\nKangra',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
+                        collegeName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
                       ),
                     ),
                   ],

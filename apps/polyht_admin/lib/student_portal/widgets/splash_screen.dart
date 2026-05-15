@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   const SizedBox(height: 4),
                   Text(widget.subtitle, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8), letterSpacing: 3)),
                   const SizedBox(height: 12),
-                  Text('Govt. Polytechnic Kangra', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 1)),
+                  Text('Poly H.T', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 1)),
                   const SizedBox(height: 40),
                   SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white.withValues(alpha: 0.7))),
                 ],

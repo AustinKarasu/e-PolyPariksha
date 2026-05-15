@@ -76,7 +76,7 @@ class _TestListScreenState extends State<TestListScreen> {
                                     ),
                                   ),
                                   Text(
-                                    auth.user?.collegeId ?? 'House Tests',
+                                    auth.user?.collegeName ?? 'House Tests',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Colors.white.withValues(alpha: 0.75),

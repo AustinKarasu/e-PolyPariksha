@@ -67,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
                                   ),
                                   Text(
-                                    'Manage house test papers and schedules',
+                                    auth.user?.collegeName ?? 'Manage house test papers and schedules',
                                     style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.75)),
                                   ),
                                 ],

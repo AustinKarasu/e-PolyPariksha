@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_theme.dart';
 import '../providers/auth_provider.dart';
-import '../providers/theme_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../screens/history_screen.dart';
 import '../screens/info_screen.dart';
 import '../screens/profile_screen.dart';
@@ -17,6 +17,7 @@ class AppDrawer extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final theme = context.watch<ThemeProvider>();
     final user = auth.user;
+    final collegeName = user?.collegeName?.trim().isNotEmpty == true ? user!.collegeName! : 'Poly H.T';
 
     return Drawer(
       child: Column(
@@ -36,10 +37,12 @@ class AppDrawer extends StatelessWidget {
                       child: Image.asset('assets/images/polyht_logo.png', width: 52, height: 52, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Govt. Polytechnic\nKangra',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
+                        collegeName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
                       ),
                     ),
                   ],
