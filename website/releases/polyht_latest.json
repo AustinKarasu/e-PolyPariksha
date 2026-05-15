@@ -1,8 +1,8 @@
 {
   "appId": "polyht",
   "latestVersion": "1.0.45",
-  "latestBuild": 45,
+  "latestBuild": 46,
   "mandatory": true,
   "releaseNotes": "Required update: combines admin and student portals, strengthens student field validation, improves admin approvals, and keeps the assistant focused on Poly H.T workflows.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.45/polyht-v1.0.45+45.apk"
+  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.45/polyht-v1.0.45+46.apk"
 }
