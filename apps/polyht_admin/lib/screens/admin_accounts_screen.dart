@@ -598,8 +598,9 @@ class _ApplicationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending = application.status == 'pending';
+    final muted = Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -610,38 +611,177 @@ class _ApplicationTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: Text(application.fullName, style: const TextStyle(fontWeight: FontWeight.w700))),
-              Chip(label: Text(application.status), visualDensity: VisualDensity.compact),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      application.fullName,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(application.email, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: muted)),
+                  ],
+                ),
+              ),
+              _StatusPill(status: application.status),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(application.email),
-          Text('${application.mobile} - ${application.collegeName}, ${application.stateName}', style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: pending ? onApprove : null,
-                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                  label: const Text('Add'),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLight.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ApplicationMeta(icon: Icons.phone_outlined, text: application.mobile),
+                const SizedBox(height: 5),
+                _ApplicationMeta(icon: Icons.account_balance_outlined, text: application.collegeName),
+                const SizedBox(height: 5),
+                _ApplicationMeta(icon: Icons.map_outlined, text: application.stateName),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 430;
+              final approve = FilledButton.icon(
+                onPressed: pending ? onApprove : null,
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('Accept'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.success,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(44),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: pending ? onReject : null,
-                  icon: const Icon(Icons.block_rounded, size: 18),
-                  label: const Text('Reject'),
+              );
+              final reject = OutlinedButton.icon(
+                onPressed: pending ? onReject : null,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                label: const Text('Reject'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.error,
+                  side: BorderSide(color: AppTheme.error.withValues(alpha: 0.55)),
+                  minimumSize: const Size.fromHeight(44),
                 ),
-              ),
-              IconButton(
+              );
+              final remove = IconButton.outlined(
                 tooltip: 'Remove application',
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
-              ),
-            ],
+                color: AppTheme.error,
+                icon: const Icon(Icons.delete_outline_rounded),
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    approve,
+                    const SizedBox(height: 8),
+                    reject,
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                      label: const Text('Remove'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.error,
+                        side: BorderSide(color: AppTheme.error.withValues(alpha: 0.35)),
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: approve),
+                  const SizedBox(width: 10),
+                  Expanded(child: reject),
+                  const SizedBox(width: 8),
+                  remove,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicationMeta extends StatelessWidget {
+  const _ApplicationMeta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppTheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      'approved' => AppTheme.success,
+      'rejected' => AppTheme.error,
+      _ => AppTheme.accent,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status[0].toUpperCase() + status.substring(1),
+            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ],
       ),
