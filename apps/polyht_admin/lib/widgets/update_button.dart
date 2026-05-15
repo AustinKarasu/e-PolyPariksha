@@ -19,7 +19,10 @@ class _UpdateButtonState extends State<UpdateButton> {
       tooltip: 'Check for update',
       onPressed: _checking ? null : _check,
       icon: _checking
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.system_update_alt),
     );
   }
@@ -30,7 +33,8 @@ class _UpdateButtonState extends State<UpdateButton> {
       final update = await _service.checkForUpdate();
       if (!mounted) return;
       if (update == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('App is up to date.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('App is up to date.')));
         return;
       }
       await showDialog<void>(
@@ -38,22 +42,28 @@ class _UpdateButtonState extends State<UpdateButton> {
         barrierDismissible: !update.mandatory,
         builder: (context) => AlertDialog(
           title: Text('Update ${update.latestVersion} available'),
-          content: Text(update.releaseNotes.isEmpty ? 'A newer APK is ready to install.' : update.releaseNotes),
+          content: Text(update.releaseNotes.isEmpty
+              ? update.fallbackMessage
+              : update.releaseNotes),
           actions: [
-            if (!update.mandatory) TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Later')),
+            if (!update.mandatory)
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Later')),
             FilledButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _service.openDownload(update);
+                await _service.openUpdate(update);
               },
-              child: const Text('Download'),
+              child: Text(update.actionLabel),
             ),
           ],
         ),
       );
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(err.toString())));
       }
     } finally {
       if (mounted) setState(() => _checking = false);

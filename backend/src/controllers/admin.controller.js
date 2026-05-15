@@ -1,6 +1,6 @@
 const adminService = require('../services/admin.service');
 
-async function listAdmins(_req, res, next) {
+async function listAdmins(req, res, next) {
   try {
     const admins = await adminService.listAdmins(req.user.sub);
     res.json({ admins });

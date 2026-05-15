@@ -38,16 +38,19 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isPrimaryAdmin = context.watch<AuthProvider>().user?.isPrimaryAdmin == true;
+    final isPrimaryAdmin =
+        context.watch<AuthProvider>().user?.isPrimaryAdmin == true;
     if (!isPrimaryAdmin) {
       return const Scaffold(
-        body: Center(child: Text('Only the superuser can manage admin accounts.')),
+        body: Center(
+            child: Text('Only the superuser can manage admin accounts.')),
       );
     }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Accounts'),
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
+        flexibleSpace: Container(
+            decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
         actions: [
           IconButton(
             tooltip: 'Import Excel',
@@ -86,10 +89,16 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
               future: _applications,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: AppTheme.primary)));
+                  return const Center(
+                      child: Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                              color: AppTheme.primary)));
                 }
                 final applications = snapshot.data ?? [];
-                final pending = applications.where((application) => application.status == 'pending').length;
+                final pending = applications
+                    .where((application) => application.status == 'pending')
+                    .length;
                 return _ApplicationsMenu(
                   total: applications.length,
                   pending: pending,
@@ -98,16 +107,32 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
               },
             ),
             const SizedBox(height: 18),
-            Text('Admins', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            Text('Admins',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             FutureBuilder<List<AdminAccount>>(
               future: _admins,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: AppTheme.primary)));
+                  return const Center(
+                      child: Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                              color: AppTheme.primary)));
+                }
+                if (snapshot.hasError) {
+                  return _EmptyPanel(
+                      text: snapshot.error
+                          .toString()
+                          .replaceFirst('Exception: ', ''));
                 }
                 final admins = snapshot.data ?? [];
-                if (admins.isEmpty) return const _EmptyPanel(text: 'No admin accounts found');
+                if (admins.isEmpty) {
+                  return const _EmptyPanel(text: 'No admin accounts found');
+                }
                 return Column(
                   children: [
                     for (final admin in admins) ...[
@@ -136,7 +161,8 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     );
   }
 
-  Future<void> _showApplicationsDialog(List<AdminApplication> applications) async {
+  Future<void> _showApplicationsDialog(
+      List<AdminApplication> applications) async {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -147,7 +173,8 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
           child: applications.isEmpty
               ? const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text('No admin applications', textAlign: TextAlign.center),
+                  child: Text('No admin applications',
+                      textAlign: TextAlign.center),
                 )
               : ListView.separated(
                   shrinkWrap: true,
@@ -174,7 +201,9 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                 ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close')),
         ],
       ),
     );
@@ -184,9 +213,15 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     try {
       await _service.approveApplication(application.id);
       _refresh();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${application.fullName} approved')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${application.fullName} approved')));
+      }
     } catch (err) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
@@ -195,7 +230,10 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       await _service.rejectApplication(application.id);
       _refresh();
     } catch (err) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
@@ -204,7 +242,10 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       await _service.deleteApplication(application.id);
       _refresh();
     } catch (err) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
@@ -213,9 +254,12 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete admin?'),
-        content: Text('Delete ${admin.fullName}? Primary admins cannot be deleted.'),
+        content:
+            Text('Delete ${admin.fullName}? Primary admins cannot be deleted.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
             onPressed: () => Navigator.of(context).pop(true),
@@ -230,13 +274,15 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       _refresh();
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
     }
   }
 
   Future<void> _importAdmins() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
+    final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
     final file = result?.files.single;
     final bytes = file?.bytes;
     if (bytes == null) return;
@@ -252,16 +298,21 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
         builder: (context) => AlertDialog(
           title: const Text('Admin import complete'),
           content: SingleChildScrollView(
-            child: Text(details.isEmpty ? importResult.summary : '${importResult.summary}\n\n$details'),
+            child: Text(details.isEmpty
+                ? importResult.summary
+                : '${importResult.summary}\n\n$details'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK')),
           ],
         ),
       );
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
     } finally {
       if (mounted) setState(() => _bulkBusy = false);
@@ -275,11 +326,13 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       final file = await _bulkService.exportAdmins(admins);
       await _bulkService.open(file);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported ${admins.length} admins')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Exported ${admins.length} admins')));
       }
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
     } finally {
       if (mounted) setState(() => _bulkBusy = false);
@@ -303,28 +356,42 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full name', prefixIcon: Icon(Icons.person_outline)),
-                  validator: (value) => value == null || value.trim().length < 2 ? 'Required' : null,
+                  decoration: const InputDecoration(
+                      labelText: 'Full name',
+                      prefixIcon: Icon(Icons.person_outline)),
+                  validator: (value) => value == null || value.trim().length < 2
+                      ? 'Required'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
-                  validator: (value) => value == null || !value.contains('@') ? 'Enter valid email' : null,
+                  decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined)),
+                  validator: (value) => value == null || !value.contains('@')
+                      ? 'Enter valid email'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Temporary password', prefixIcon: Icon(Icons.lock_outline)),
-                  validator: (value) => value == null || value.length < 10 ? 'Minimum 10 characters' : null,
+                  decoration: const InputDecoration(
+                      labelText: 'Temporary password',
+                      prefixIcon: Icon(Icons.lock_outline)),
+                  validator: (value) => value == null || value.length < 10
+                      ? 'Minimum 10 characters'
+                      : null,
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
@@ -349,7 +416,8 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
   Future<void> _showClearDataDialog() async {
     final auth = context.read<AuthProvider>();
     if (auth.user?.twoFactorEnabled != true) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enable 2FA before clearing data.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enable 2FA before clearing data.')));
       return;
     }
     final codeController = TextEditingController();
@@ -368,40 +436,51 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Select exactly what to clear. This action cannot be undone.'),
+                const Text(
+                    'Select exactly what to clear. This action cannot be undone.'),
                 CheckboxListTile(
                   value: tests,
-                  onChanged: (value) => setDialogState(() => tests = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => tests = value ?? false),
                   title: const Text('Tests and PDFs'),
-                  subtitle: const Text('Deletes tests, attempts, and test events.'),
+                  subtitle:
+                      const Text('Deletes tests, attempts, and test events.'),
                 ),
                 CheckboxListTile(
                   value: history,
-                  onChanged: (value) => setDialogState(() => history = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => history = value ?? false),
                   title: const Text('Student test history'),
                   subtitle: const Text('Deletes attempts and exam logs only.'),
                 ),
                 CheckboxListTile(
                   value: students,
-                  onChanged: (value) => setDialogState(() => students = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => students = value ?? false),
                   title: const Text('Student accounts'),
-                  subtitle: const Text('Deletes students and their sessions/history.'),
+                  subtitle: const Text(
+                      'Deletes students and their sessions/history.'),
                 ),
                 CheckboxListTile(
                   value: logs,
-                  onChanged: (value) => setDialogState(() => logs = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => logs = value ?? false),
                   title: const Text('All logs'),
-                  subtitle: const Text('Deletes exam events and login failure logs.'),
+                  subtitle:
+                      const Text('Deletes exam events and login failure logs.'),
                 ),
                 CheckboxListTile(
                   value: applications,
-                  onChanged: (value) => setDialogState(() => applications = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => applications = value ?? false),
                   title: const Text('All applications'),
-                  subtitle: const Text('Deletes pending, approved, and rejected admin applications.'),
+                  subtitle: const Text(
+                      'Deletes pending, approved, and rejected admin applications.'),
                 ),
                 CheckboxListTile(
                   value: sessions,
-                  onChanged: (value) => setDialogState(() => sessions = value ?? false),
+                  onChanged: (value) =>
+                      setDialogState(() => sessions = value ?? false),
                   title: const Text('All login sessions'),
                   subtitle: const Text('Forces every user to sign in again.'),
                 ),
@@ -415,7 +494,9 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel')),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
               onPressed: () => Navigator.of(context).pop(true),
@@ -441,11 +522,13 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       );
       _refresh();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selected data cleared')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selected data cleared')));
       }
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(err.toString().replaceFirst('Exception: ', ''))));
       }
     } finally {
       codeController.dispose();
@@ -472,29 +555,44 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Enable 2FA'),
         content: SingleChildScrollView(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            const Text('Scan the QR code with an authenticator app, then enter the 6-digit code.'),
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                color: Colors.white,
-                padding: const EdgeInsets.all(12),
-                child: QrImageView(data: setup['otpauthUrl'] as String, size: 190),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SelectableText(setup['secret'] as String),
-            const SizedBox(height: 12),
-            TextField(controller: codeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Authenticator code')),
-          ]),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'Scan the QR code with an authenticator app, then enter the 6-digit code.'),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(12),
+                    child: QrImageView(
+                        data: setup['otpauthUrl'] as String, size: 190),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SelectableText(setup['secret'] as String),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Authenticator code')),
+              ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Enable')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Enable')),
         ],
       ),
     );
-    if (confirmed == true) await auth.enableTwoFactor(codeController.text.trim());
+    if (confirmed == true) {
+      await auth.enableTwoFactor(codeController.text.trim());
+    }
     codeController.dispose();
   }
 
@@ -504,14 +602,23 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Disable 2FA'),
-        content: TextField(controller: codeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Authenticator code')),
+        content: TextField(
+            controller: codeController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Authenticator code')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Disable')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Disable')),
         ],
       ),
     );
-    if (confirmed == true) await auth.disableTwoFactor(codeController.text.trim());
+    if (confirmed == true) {
+      await auth.disableTwoFactor(codeController.text.trim());
+    }
     codeController.dispose();
   }
 }
@@ -546,21 +653,44 @@ class _AdminTile extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.admin_panel_settings_rounded, size: 22, color: AppTheme.primary),
+            decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.admin_panel_settings_rounded,
+                size: 22, color: AppTheme.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(admin.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-                if (admin.isPrimaryAdmin) const Chip(label: Text('Primary'), visualDensity: VisualDensity.compact),
+                Expanded(
+                    child: Text(admin.fullName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15))),
+                if (admin.isPrimaryAdmin)
+                  const Chip(
+                      label: Text('Primary'),
+                      visualDensity: VisualDensity.compact),
               ]),
-              Text(admin.email, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6))),
+              Text(admin.email,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.color
+                          ?.withValues(alpha: 0.6))),
               const SizedBox(height: 4),
               Text(
                 '${admin.twoFactorEnabled ? '2FA enabled' : '2FA off'} - ${admin.isActive ? 'Active' : 'Inactive'}',
-                style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color
+                        ?.withValues(alpha: 0.6)),
               ),
             ]),
           ),
@@ -571,9 +701,14 @@ class _AdminTile extends StatelessWidget {
               if (value == 'delete') onDelete();
             },
             itemBuilder: (_) => [
-              if (canManagePrimary && !admin.isPrimaryAdmin) const PopupMenuItem(value: 'primary', child: Text('Make primary')),
-              PopupMenuItem(value: 'toggle', child: Text(admin.isActive ? 'Deactivate' : 'Activate')),
-              if (!admin.isPrimaryAdmin) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              if (canManagePrimary && !admin.isPrimaryAdmin)
+                const PopupMenuItem(
+                    value: 'primary', child: Text('Make primary')),
+              PopupMenuItem(
+                  value: 'toggle',
+                  child: Text(admin.isActive ? 'Deactivate' : 'Activate')),
+              if (!admin.isPrimaryAdmin)
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
         ],
@@ -598,7 +733,8 @@ class _ApplicationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending = application.status == 'pending';
-    final muted = Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65);
+    final muted =
+        Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -620,7 +756,8 @@ class _ApplicationTile extends StatelessWidget {
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primary),
+                child: const Icon(Icons.person_add_alt_1_rounded,
+                    color: AppTheme.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -629,10 +766,15 @@ class _ApplicationTile extends StatelessWidget {
                   children: [
                     Text(
                       application.fullName,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15),
                     ),
                     const SizedBox(height: 2),
-                    Text(application.email, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: muted)),
+                    Text(application.email,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: muted)),
                   ],
                 ),
               ),
@@ -650,11 +792,15 @@ class _ApplicationTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ApplicationMeta(icon: Icons.phone_outlined, text: application.mobile),
+                _ApplicationMeta(
+                    icon: Icons.phone_outlined, text: application.mobile),
                 const SizedBox(height: 5),
-                _ApplicationMeta(icon: Icons.account_balance_outlined, text: application.collegeName),
+                _ApplicationMeta(
+                    icon: Icons.account_balance_outlined,
+                    text: application.collegeName),
                 const SizedBox(height: 5),
-                _ApplicationMeta(icon: Icons.map_outlined, text: application.stateName),
+                _ApplicationMeta(
+                    icon: Icons.map_outlined, text: application.stateName),
               ],
             ),
           ),
@@ -678,7 +824,8 @@ class _ApplicationTile extends StatelessWidget {
                 label: const Text('Reject'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.error,
-                  side: BorderSide(color: AppTheme.error.withValues(alpha: 0.55)),
+                  side:
+                      BorderSide(color: AppTheme.error.withValues(alpha: 0.55)),
                   minimumSize: const Size.fromHeight(44),
                 ),
               );
@@ -702,7 +849,8 @@ class _ApplicationTile extends StatelessWidget {
                       label: const Text('Remove'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.error,
-                        side: BorderSide(color: AppTheme.error.withValues(alpha: 0.35)),
+                        side: BorderSide(
+                            color: AppTheme.error.withValues(alpha: 0.35)),
                         minimumSize: const Size.fromHeight(44),
                       ),
                     ),
@@ -781,7 +929,8 @@ class _StatusPill extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             status[0].toUpperCase() + status.substring(1),
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -790,7 +939,8 @@ class _StatusPill extends StatelessWidget {
 }
 
 class _ApplicationsMenu extends StatelessWidget {
-  const _ApplicationsMenu({required this.total, required this.pending, required this.onTap});
+  const _ApplicationsMenu(
+      {required this.total, required this.pending, required this.onTap});
 
   final int total;
   final int pending;
@@ -806,7 +956,8 @@ class _ApplicationsMenu extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          border: Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.12)),
+          border:
+              Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.12)),
           boxShadow: AppTheme.cardShadow,
         ),
         child: Row(
@@ -818,19 +969,30 @@ class _ApplicationsMenu extends StatelessWidget {
                 color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.assignment_ind_outlined, color: AppTheme.primary),
+              child: const Icon(Icons.assignment_ind_outlined,
+                  color: AppTheme.primary),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Applications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text('Applications',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 2),
                   Text(
-                    pending == 0 ? '$total total applications' : '$pending pending - $total total',
+                    pending == 0
+                        ? '$total total applications'
+                        : '$pending pending - $total total',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65),
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.color
+                              ?.withValues(alpha: 0.65),
                         ),
                   ),
                 ],

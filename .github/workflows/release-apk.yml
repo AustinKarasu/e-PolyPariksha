@@ -135,7 +135,9 @@ jobs:
             --argjson mandatory "${{ steps.vars.outputs.mandatory }}" \
             --arg notes "${{ steps.vars.outputs.release_notes }}" \
             --arg download "${{ steps.vars.outputs.release_base_url }}/$APP_APK" \
-            '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download}' \
+            --arg packageName "in.polyht.polyht_admin" \
+            --arg playStoreUrl "https://play.google.com/store/apps/details?id=in.polyht.polyht_admin" \
+            '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download, packageName: $packageName, playStoreUrl: $playStoreUrl}' \
             > public/releases/polyht_latest.json
           printf '%s\n' \
             '<!doctype html>' \
