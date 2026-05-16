@@ -1,10 +1,10 @@
 {
   "appId": "polyht",
-  "latestVersion": "1.0.49",
-  "latestBuild": 50,
+  "latestVersion": "1.0.50",
+  "latestBuild": 51,
   "mandatory": true,
-  "releaseNotes": "Required update:\n- Keeps the exam app in secure full-screen mode while a live test is open.\n- Sends heartbeat pings every 15 seconds until the test is submitted.\n- Locks attempts on back navigation, app backgrounding, split screen, picture-in-picture, or notification shade focus loss.\n- Adds AI Reports in the admin hamburger with Excel download for each student's attempted tests.\n- Makes scheduled-test notifications refresh faster and fire immediately for live or near-start tests.\n- Keeps Play Store update prompts with APK fallback for direct installs.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.49/polyht-v1.0.49+50.apk",
+  "releaseNotes": "Required update:\n- Fixes AI Reports loading by falling back to existing logs when the rich report endpoint is unavailable.\n- Fixes scheduled-test notification times for India/local time, so 11:34 AM no longer appears as UTC time.\n- Keeps secure exam heartbeat and lock protection for live tests.\n- Keeps Play Store update prompts with APK fallback for direct installs.",
+  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.50/polyht-v1.0.50+51.apk",
   "packageName": "in.polyht.polyht_admin",
   "usePlayStore": true,
   "playStoreUrl": "https://play.google.com/store/apps/details?id=in.polyht.polyht_admin"

@@ -54,18 +54,18 @@ class NotificationService {
       try {
         await _cancelTest(test.id);
         if (test.status == 'ended') continue;
+        final start = test.scheduledStart.toLocal();
+        final end = test.scheduledEnd.toLocal();
         final scheduledKey =
-            '${test.id}:scheduled:${test.scheduledStart.millisecondsSinceEpoch}';
-        final liveKey =
-            '${test.id}:live:${test.scheduledStart.millisecondsSinceEpoch}';
+            '${test.id}:scheduled:${start.millisecondsSinceEpoch}';
+        final liveKey = '${test.id}:live:${start.millisecondsSinceEpoch}';
         final upcomingKey =
-            '${test.id}:upcoming:${test.scheduledStart.millisecondsSinceEpoch}';
+            '${test.id}:upcoming:${start.millisecondsSinceEpoch}';
         if (test.status == 'upcoming' && !seen.contains(scheduledKey)) {
           await _showNow(
             id: _id(test.id, 4),
             title: 'House test scheduled',
-            body:
-                '${test.title} is scheduled for ${_time(test.scheduledStart)}.',
+            body: '${test.title} is scheduled for ${_time(start)}.',
           );
           seen.add(scheduledKey);
         }
@@ -79,29 +79,29 @@ class NotificationService {
         }
         if (test.status == 'upcoming' &&
             !seen.contains(upcomingKey) &&
-            test.scheduledStart.difference(now) <= const Duration(minutes: 2)) {
+            start.difference(now) <= const Duration(minutes: 2)) {
           await _showNow(
             id: _id(test.id, 1),
             title: 'Upcoming house test',
-            body: '${test.title} starts at ${_time(test.scheduledStart)}.',
+            body: '${test.title} starts at ${_time(start)}.',
           );
           seen.add(upcomingKey);
         }
         await _schedule(
           id: _id(test.id, 1),
-          when: _upcomingTime(test.scheduledStart),
+          when: _upcomingTime(start),
           title: 'Upcoming house test',
-          body: '${test.title} starts at ${_time(test.scheduledStart)}.',
+          body: '${test.title} starts at ${_time(start)}.',
         );
         await _schedule(
           id: _id(test.id, 2),
-          when: test.scheduledStart,
+          when: start,
           title: 'House test started',
           body: '${test.title} is available now.',
         );
         await _schedule(
           id: _id(test.id, 3),
-          when: test.scheduledEnd,
+          when: end,
           title: 'House test ended',
           body: '${test.title} has ended. The PDF is now in history.',
         );
@@ -130,7 +130,7 @@ class NotificationService {
       await _showNow(id: id, title: title, body: body);
       return;
     }
-    final scheduledTime = tz.TZDateTime.from(when, tz.local);
+    final scheduledTime = tz.TZDateTime.from(when.toLocal(), tz.local);
     try {
       await _plugin.zonedSchedule(
         id,
@@ -197,10 +197,11 @@ class NotificationService {
   int _id(int testId, int kind) => testId * 10 + kind;
 
   String _time(DateTime value) {
+    final local = value.toLocal();
     final hour =
-        value.hour > 12 ? value.hour - 12 : (value.hour == 0 ? 12 : value.hour);
-    final minute = value.minute.toString().padLeft(2, '0');
-    final suffix = value.hour >= 12 ? 'PM' : 'AM';
+        local.hour > 12 ? local.hour - 12 : (local.hour == 0 ? 12 : local.hour);
+    final minute = local.minute.toString().padLeft(2, '0');
+    final suffix = local.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $suffix';
   }
 }

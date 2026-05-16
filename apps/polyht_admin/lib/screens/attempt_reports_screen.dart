@@ -100,9 +100,23 @@ class _AttemptReportsScreenState extends State<AttemptReportsScreen> {
                             CircularProgressIndicator(color: AppTheme.primary));
                   }
                   if (snapshot.hasError) {
-                    return ListView(children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('Unable to load reports')),
+                    final message = snapshot.error
+                        .toString()
+                        .replaceFirst('Exception: ', '');
+                    return ListView(children: [
+                      const SizedBox(height: 120),
+                      const Center(child: Text('Unable to load reports')),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color),
+                        ),
+                      ),
                     ]);
                   }
                   final reports = snapshot.data ?? [];
