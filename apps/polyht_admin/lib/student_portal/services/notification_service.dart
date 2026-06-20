@@ -52,7 +52,6 @@ class NotificationService {
     final now = DateTime.now();
     for (final test in tests) {
       try {
-        await _cancelTest(test.id);
         if (test.status == 'ended') continue;
         final start = test.scheduledStart.toLocal();
         final end = test.scheduledEnd.toLocal();
@@ -61,6 +60,8 @@ class NotificationService {
         final liveKey = '${test.id}:live:${start.millisecondsSinceEpoch}';
         final upcomingKey =
             '${test.id}:upcoming:${start.millisecondsSinceEpoch}';
+        final alarmsKey =
+            '${test.id}:alarms:${start.millisecondsSinceEpoch}:${end.millisecondsSinceEpoch}';
         if (test.status == 'upcoming' && !seen.contains(scheduledKey)) {
           await _showNow(
             id: _id(test.id, 4),
@@ -87,24 +88,28 @@ class NotificationService {
           );
           seen.add(upcomingKey);
         }
-        await _schedule(
-          id: _id(test.id, 1),
-          when: _upcomingTime(start),
-          title: 'Upcoming house test',
-          body: '${test.title} starts at ${_time(start)}.',
-        );
-        await _schedule(
-          id: _id(test.id, 2),
-          when: start,
-          title: 'House test started',
-          body: '${test.title} is available now.',
-        );
-        await _schedule(
-          id: _id(test.id, 3),
-          when: end,
-          title: 'House test ended',
-          body: '${test.title} has ended. The PDF is now in history.',
-        );
+        if (!seen.contains(alarmsKey)) {
+          await _cancelTest(test.id);
+          await _schedule(
+            id: _id(test.id, 1),
+            when: _upcomingTime(start),
+            title: 'Upcoming house test',
+            body: '${test.title} starts at ${_time(start)}.',
+          );
+          await _schedule(
+            id: _id(test.id, 2),
+            when: start,
+            title: 'House test started',
+            body: '${test.title} is available now.',
+          );
+          await _schedule(
+            id: _id(test.id, 3),
+            when: end,
+            title: 'House test ended',
+            body: '${test.title} has ended. The PDF is now in history.',
+          );
+          seen.add(alarmsKey);
+        }
       } catch (_) {}
     }
     await prefs.setStringList('notified_test_ids', seen.toList());
