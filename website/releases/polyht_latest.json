@@ -1,10 +1,10 @@
 {
     "appId":  "epolypariksha-hp",
-    "latestVersion":  "1.0.5",
-    "latestBuild":  60,
+    "latestVersion":  "1.0.6",
+    "latestBuild":  61,
     "mandatory":  true,
     "releaseNotes":  "e-PolyPariksha HP update:\n- Test schedule, start, and completion emails are now sent to eligible students.\n- Completed test emails include the question paper for easy reference.\n- Email OTPs expire in 10 minutes and have stronger request and retry limits.\n- Email changes and adding an administrator now require email OTP verification.",
-    "downloadUrl":  "http://150.242.202.246/downloads/epolypariksha-hp-v1.0-build60.apk",
+    "downloadUrl":  "http://150.242.202.246/downloads/epolypariksha-hp-v1.0-build61.apk",
     "packageName":  "in.polyht.polyht_admin",
     "usePlayStore":  false,
     "playStoreUrl":  ""
