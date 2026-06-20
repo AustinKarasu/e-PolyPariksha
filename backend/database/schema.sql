@@ -1,4 +1,4 @@
--- PolyH.T Database Schema (PostgreSQL / Supabase)
+-- e-PolyPariksha HP Database Schema (PostgreSQL / Supabase)
 
 CREATE TABLE IF NOT EXISTS branches (
   id SERIAL PRIMARY KEY,

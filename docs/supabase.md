@@ -1,6 +1,6 @@
 # Supabase Setup
 
-PolyH.T uses Supabase for the production PostgreSQL database and can also use Supabase Storage for PDF question papers.
+e-PolyPariksha HP uses Supabase for the production PostgreSQL database and can also use Supabase Storage for PDF question papers.
 
 ## Database
 

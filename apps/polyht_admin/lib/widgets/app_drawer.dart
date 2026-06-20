@@ -23,7 +23,7 @@ class AppDrawer extends StatelessWidget {
     final isPrimaryAdmin = user?.isPrimaryAdmin == true;
     final collegeName = user?.collegeName?.trim().isNotEmpty == true
         ? user!.collegeName!
-        : 'Poly H.T';
+        : 'e-PolyPariksha HP';
 
     return Drawer(
       child: Column(
@@ -44,7 +44,7 @@ class AppDrawer extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset('assets/images/polyht_logo.png',
+                      child: Image.asset('assets/images/e-PolyPariksha HP_logo.png',
                           width: 52, height: 52, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
@@ -197,7 +197,7 @@ class AppDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Poly H.T v1.0.0',
+              'e-PolyPariksha HP v1.0.0',
               style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context)

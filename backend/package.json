@@ -1,7 +1,7 @@
 {
-  "name": "polyht-backend",
+  "name": "epolypariksha-hp-backend",
   "version": "1.0.0",
-  "description": "REST API for PolyH.T Admin and Student apps",
+  "description": "REST API for e-PolyPariksha HP Admin and Student app",
   "main": "src/server.js",
   "scripts": {
     "create-user": "node src/scripts/create-user.js",

@@ -31,7 +31,7 @@ if (env.storage.driver === 'local') {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'polyht-api' });
+  res.json({ status: 'ok', service: 'epolypariksha-hp-api' });
 });
 
 app.use('/api/auth', authRoutes);

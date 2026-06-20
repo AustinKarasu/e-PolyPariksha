@@ -1,14 +1,14 @@
-# PolyH.T - Polytechnic House Test System
+# e-PolyPariksha HP - Polytechnic House Test System
 
 Govt. Polytechnic Kangra
 
-PolyH.T is a combined mobile examination system for securely administering and taking house tests. It includes one Flutter APK with Admin and Student portals, a Node.js/Express REST API, a Supabase PostgreSQL database, and optional Supabase Storage/S3-compatible PDF storage.
+e-PolyPariksha HP is a combined mobile examination system for securely administering and taking house tests. It includes one Flutter APK with Admin and Student portals, a Node.js/Express REST API, a Supabase PostgreSQL database, and optional Supabase Storage/S3-compatible PDF storage.
 
 ## Project Structure
 
 ```text
 apps/
-  polyht_admin/        Combined Flutter Admin and Student app
+  e-PolyPariksha HP_admin/        Combined Flutter Admin and Student app
 backend/              Node.js Express API
   database/           SQL schema and migrations
   src/                Controllers, services, middleware, routes
@@ -19,7 +19,7 @@ website/              Public app release manifests and downloads
 
 ## Features
 
-### PolyH.T Admin
+### e-PolyPariksha HP Admin
 
 - Secure admin login with JWT session tracking.
 - Dashboard for Computer, Mechanical, Electrical, Instrumental, Electronic, and Civil Engg branches.
@@ -29,7 +29,7 @@ website/              Public app release manifests and downloads
 - Review exam security events and unlock blocked attempts.
 - Professional purple theme with light/dark support.
 
-### PolyH.T Student
+### e-PolyPariksha HP Student
 
 - Login with college-provided credentials.
 - View assigned tests by branch.
@@ -84,7 +84,7 @@ flutter build apk --release --dart-define=API_BASE_URL=https://your-vercel-proje
 
 Local defaults are in:
 
-- `apps/polyht_admin/lib/config/api_config.dart`
+- `apps/e-PolyPariksha HP_admin/lib/config/api_config.dart`
 
 ## Documentation
 

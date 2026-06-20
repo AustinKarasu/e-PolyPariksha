@@ -29,7 +29,7 @@ class ReportPdfService {
         footer: (context) => pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text('PolyHT Attempt Reports', style: _mutedStyle(8)),
+            pw.Text('e-PolyPariksha HP Attempt Reports', style: _mutedStyle(8)),
             pw.Text('Page ${context.pageNumber} of ${context.pagesCount}',
                 style: _mutedStyle(8)),
           ],
@@ -84,7 +84,7 @@ class ReportPdfService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('PolyHT',
+                pw.Text('e-PolyPariksha HP',
                     style: pw.TextStyle(
                         fontSize: 22,
                         fontWeight: pw.FontWeight.bold,

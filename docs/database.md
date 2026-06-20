@@ -1,4 +1,4 @@
-# PolyH.T Database
+# e-PolyPariksha HP Database
 
 The schema is in `backend/database/schema.sql`.
 

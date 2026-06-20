@@ -1,11 +1,11 @@
 {
-  "appId": "polyht",
-  "latestVersion": "1.0.53",
-  "latestBuild": 54,
+  "appId": "epolypariksha-hp",
+  "latestVersion": "1.0",
+  "latestBuild": 55,
   "mandatory": true,
-  "releaseNotes": "Required update:\n- Uses the real PolyHT app logo in PDF report headers.\n- Renames AI Reports to Reports and AI ChatBot/AI Help to ChatBot.\n- Keeps professional per-test PDF reports, Excel export, secure exam heartbeat, and India/local notification time fixes.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.53/polyht-v1.0.53+54.apk",
+  "releaseNotes": "e-PolyPariksha HP helps a college run house tests in one simple app.\n\nHow to download:\n- Open this release and download the APK file.\n- Install it on your Android phone. If Android asks, allow installation from your browser or file manager.\n- Open e-PolyPariksha HP after installation.\n\nFor admins:\n- Sign in with your approved admin account.\n- Add student records, prepare test papers, schedule tests, and review submitted attempt reports from the admin area.\n- Keep student details correct before starting a test so the right students can see the right paper.\n\nFor students:\n- Sign in with the details given by your college.\n- Open the student area, check available tests, and start the scheduled test at the correct time.\n- Stay inside the test screen until you finish and submit your attempt.\n\nHow it works:\n- Admins create and schedule tests.\n- Students see only the tests assigned to them.\n- The app records test activity and helps the college review attempts after the test.",
+  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0/epolypariksha-hp-v1.0+55.apk",
   "packageName": "in.polyht.polyht_admin",
-  "usePlayStore": true,
-  "playStoreUrl": "https://play.google.com/store/apps/details?id=in.polyht.polyht_admin"
+  "usePlayStore": false,
+  "playStoreUrl": ""
 }

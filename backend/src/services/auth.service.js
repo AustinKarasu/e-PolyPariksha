@@ -200,8 +200,8 @@ async function setupTwoFactor(userId) {
   const user = await getCurrentUser(userId);
   const secret = generateBase32Secret();
   await query('UPDATE users SET two_factor_secret = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [secret, userId]);
-  const label = encodeURIComponent(`PolyH.T:${user.email || user.college_id || user.id}`);
-  const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=PolyH.T&algorithm=SHA1&digits=6&period=30`;
+  const label = encodeURIComponent(`e-PolyPariksha HP:${user.email || user.college_id || user.id}`);
+  const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=e-PolyPariksha HP&algorithm=SHA1&digits=6&period=30`;
   return { secret, otpauthUrl };
 }
 

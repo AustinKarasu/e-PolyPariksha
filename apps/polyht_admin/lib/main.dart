@@ -13,11 +13,11 @@ import 'widgets/update_gate.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.init();
-  runApp(const PolyHtAdminApp());
+  runApp(const e-PolyPariksha HPAdminApp());
 }
 
-class PolyHtAdminApp extends StatelessWidget {
-  const PolyHtAdminApp({super.key});
+class e-PolyPariksha HPAdminApp extends StatelessWidget {
+  const e-PolyPariksha HPAdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,7 @@ class PolyHtAdminApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
-            title: 'Poly H.T',
+            title: 'e-PolyPariksha HP',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
@@ -39,7 +39,7 @@ class PolyHtAdminApp extends StatelessWidget {
               child: Consumer2<AuthProvider, student.AuthProvider>(
               builder: (context, auth, studentAuth, _) {
                 if (auth.isLoading || studentAuth.isLoading) {
-                  return const SplashScreen(subtitle: 'POLY H.T');
+                  return const SplashScreen(subtitle: 'e-PolyPariksha HP');
                 }
                 return const RoleSelectionScreen();
               },
