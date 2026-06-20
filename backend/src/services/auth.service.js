@@ -242,6 +242,7 @@ async function changeCurrentUserPassword(userId, { currentPassword, newPassword,
     'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
     [passwordHash, userId]
   );
+  await notificationService.notifySecurityEvent(user, 'password_changed');
 }
 
 async function setupTwoFactor(userId) {
@@ -311,7 +312,6 @@ async function assertLoginAllowed(identifier, ipAddress = '') {
      WHERE identifier_hash = $1 AND ip_address = $2 AND locked_until <= CURRENT_TIMESTAMP`,
     [loginFailureKey(identifier), ipAddress || 'unknown']
   );
-  await notificationService.notifySecurityEvent(user, 'password_changed');
   const rows = await query(
     `SELECT locked_until
      FROM login_failures
