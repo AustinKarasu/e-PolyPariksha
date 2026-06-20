@@ -88,147 +88,152 @@ class _TestListScreenState extends State<TestListScreen> {
 
     await showDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Secure your student account'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Your account is still using the date-of-birth password. Verify your email, then create a private password before continuing.',
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email address',
-                      suffixIcon: IconButton(
-                        tooltip: 'Send OTP',
-                        icon: sendingOtp
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.send_outlined),
-                        onPressed: sendingOtp
-                            ? null
-                            : () async {
-                                final targetEmail = email.text.trim();
-                                if (!_validEmail(targetEmail)) {
-                                  ScaffoldMessenger.of(dialogContext)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Enter a valid email address')),
-                                  );
-                                  return;
-                                }
-                                setDialogState(() => sendingOtp = true);
-                                try {
-                                  await auth.requestInitialCredentialsOtp(
-                                      targetEmail);
-                                  if (dialogContext.mounted) {
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Secure your student account'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Your account is still using the date-of-birth password. Verify your email, then create a private password before continuing.',
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: email,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email address',
+                        suffixIcon: IconButton(
+                          tooltip: 'Send OTP',
+                          icon: sendingOtp
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send_outlined),
+                          onPressed: sendingOtp
+                              ? null
+                              : () async {
+                                  final targetEmail = email.text.trim();
+                                  if (!_validEmail(targetEmail)) {
                                     ScaffoldMessenger.of(dialogContext)
                                         .showSnackBar(
                                       const SnackBar(
-                                          content:
-                                              Text('OTP sent to this email')),
+                                          content: Text(
+                                              'Enter a valid email address')),
                                     );
+                                    return;
                                   }
-                                } catch (err) {
-                                  if (dialogContext.mounted) {
-                                    ScaffoldMessenger.of(dialogContext)
-                                        .showSnackBar(
-                                      SnackBar(content: Text(_cleanError(err))),
-                                    );
+                                  setDialogState(() => sendingOtp = true);
+                                  try {
+                                    await auth.requestInitialCredentialsOtp(
+                                        targetEmail);
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(dialogContext)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content:
+                                                Text('OTP sent to this email')),
+                                      );
+                                    }
+                                  } catch (err) {
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(dialogContext)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(_cleanError(err))),
+                                      );
+                                    }
+                                  } finally {
+                                    if (dialogContext.mounted) {
+                                      setDialogState(() => sendingOtp = false);
+                                    }
                                   }
-                                } finally {
-                                  if (dialogContext.mounted) {
-                                    setDialogState(() => sendingOtp = false);
-                                  }
-                                }
-                              },
+                                },
+                        ),
                       ),
+                      validator: (value) => _validEmail(value ?? '')
+                          ? null
+                          : 'Enter a valid email address',
                     ),
-                    validator: (value) => _validEmail(value ?? '')
-                        ? null
-                        : 'Enter a valid email address',
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: otp,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Email OTP'),
-                    validator: (value) => (value ?? '').trim().length >= 6
-                        ? null
-                        : 'Enter the email OTP',
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: password,
-                    obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'New password'),
-                    validator: (value) => _passwordError(value ?? ''),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: confirmPassword,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                        labelText: 'Confirm new password'),
-                    validator: (value) => value == password.text
-                        ? null
-                        : 'Passwords do not match',
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: otp,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Email OTP'),
+                      validator: (value) => (value ?? '').trim().length >= 6
+                          ? null
+                          : 'Enter the email OTP',
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: password,
+                      obscureText: true,
+                      decoration:
+                          const InputDecoration(labelText: 'New password'),
+                      validator: (value) => _passwordError(value ?? ''),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: confirmPassword,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                          labelText: 'Confirm new password'),
+                      validator: (value) => value == password.text
+                          ? null
+                          : 'Passwords do not match',
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      setDialogState(() => saving = true);
-                      try {
-                        await auth.completeInitialCredentials(
-                          email.text.trim(),
-                          otp.text.trim(),
-                          password.text,
-                        );
-                        if (dialogContext.mounted) {
-                          Navigator.of(dialogContext).pop();
-                        }
-                      } catch (err) {
-                        if (dialogContext.mounted) {
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(content: Text(_cleanError(err))),
+            actions: [
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setDialogState(() => saving = true);
+                        try {
+                          await auth.completeInitialCredentials(
+                            email.text.trim(),
+                            otp.text.trim(),
+                            password.text,
                           );
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        } catch (err) {
+                          if (dialogContext.mounted) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text(_cleanError(err))),
+                            );
+                          }
+                        } finally {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => saving = false);
+                          }
                         }
-                      } finally {
-                        if (dialogContext.mounted) {
-                          setDialogState(() => saving = false);
-                        }
-                      }
-                    },
-              child: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Save and continue'),
-            ),
-          ],
+                      },
+                child: saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save and continue'),
+              ),
+            ],
+          ),
         ),
       ),
     );
