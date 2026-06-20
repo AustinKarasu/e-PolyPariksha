@@ -71,7 +71,7 @@ async function login(identifier, password, context = {}) {
   const token = jwt.sign(
     { sub: user.id, role: user.role, branchId: user.branch_id, semester: user.semester, jti },
     env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
+    { expiresIn: env.jwtExpiresIn, algorithm: 'HS256', issuer: env.jwtIssuer, audience: env.jwtAudience }
   );
   const decoded = jwt.decode(token);
 

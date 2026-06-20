@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { imageUpload } = require('../middleware/upload.middleware');
-const { authLimiter } = require('../middleware/security.middleware');
+const { authLimiter, passwordResetLimiter } = require('../middleware/security.middleware');
 const { validate } = require('../middleware/validate.middleware');
 
 router.post(
@@ -33,17 +33,17 @@ const passwordResetValidation = [
   body('role').isIn(['admin', 'student'])
 ];
 
-router.post('/password-reset/request', authLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
+router.post('/password-reset/request', passwordResetLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
 router.post(
   '/password-reset/verify',
-  authLimiter,
+  passwordResetLimiter,
   [...passwordResetValidation, body('otpCode').trim().isLength({ min: 6, max: 8 })],
   validate,
   authController.verifyPasswordReset
 );
 router.post(
   '/password-reset/complete',
-  authLimiter,
+  passwordResetLimiter,
   [
     body('resetToken').trim().isLength({ min: 20 }),
     body('newPassword').isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })

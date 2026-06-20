@@ -20,7 +20,7 @@ const pdfUpload = multer({
   storage: env.storage.driver === 's3' ? multer.memoryStorage() : diskStorage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+    const isPdf = file.mimetype === 'application/pdf' && file.originalname.toLowerCase().endsWith('.pdf');
     if (!isPdf) {
       return cb(new ApiError(422, 'Only PDF files are allowed'));
     }
@@ -33,7 +33,7 @@ const imageUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const name = file.originalname.toLowerCase();
-    const isImage = file.mimetype.startsWith('image/') || /\.(png|jpe?g|webp)$/.test(name);
+    const isImage = ['image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype) && /\.(png|jpe?g|webp)$/.test(name);
     if (!isImage) {
       return cb(new ApiError(422, 'Only PNG, JPG, or WEBP images are allowed'));
     }

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { body } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const studentController = require('../controllers/student.controller');
 const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const { imageUpload } = require('../middleware/upload.middleware');
@@ -31,7 +31,7 @@ router.put(
 );
 
 // Admin endpoints
-router.get('/', authenticate, requireRole('admin'), studentController.listStudents);
+router.get('/', authenticate, requireRole('admin'), [query('branchId').optional().isInt({ min: 1 }), query('semester').optional().isInt({ min: 1, max: 6 }), query('limit').optional().isInt({ min: 1, max: 200 }), query('offset').optional().isInt({ min: 0 })], validate, studentController.listStudents);
 router.post(
   '/',
   authenticate,
@@ -39,7 +39,7 @@ router.post(
   [
     body('fullName').trim().isLength({ min: 2, max: 120 }),
     body('collegeId').trim().isLength({ min: 2, max: 60 }),
-    body('password').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 4, max: 80 }),
+    body('password').isStrongPassword({ minLength: 10, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 }),
     body('branchId').isInt({ min: 1 }),
     body('email').isEmail().normalizeEmail(),
     body('dob').isISO8601(),
@@ -57,12 +57,14 @@ router.post(
   validate,
   studentController.adminCreateStudent
 );
-router.get('/:id', authenticate, requireRole('admin'), studentController.getStudentById);
+const studentId = [param('id').isInt({ min: 1 })];
+router.get('/:id', authenticate, requireRole('admin'), studentId, validate, studentController.getStudentById);
 router.patch(
   '/:id',
   authenticate,
   requireRole('admin'),
   [
+    ...studentId,
     body('fullName').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 2, max: 120 }),
     body('collegeId').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 2, max: 60 }),
     body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(),
@@ -79,7 +81,7 @@ router.patch(
     body('dropoutYear').optional({ nullable: true, checkFalsy: true }).isInt({ min: 2000, max: 2100 }),
     body('branchId').optional({ nullable: true, checkFalsy: true }).isInt({ min: 1 }),
     body('isActive').optional({ nullable: true }).isBoolean(),
-    body('password').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 4, max: 80 })
+    body('password').optional({ nullable: true, checkFalsy: true }).isStrongPassword({ minLength: 10, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
   ],
   validate,
   studentController.adminUpdateStudent
@@ -88,9 +90,11 @@ router.put(
   '/:id/photo',
   authenticate,
   requireRole('admin'),
+  studentId,
+  validate,
   imageUpload.single('photo'),
   studentController.adminUpdateStudentPhoto
 );
-router.delete('/:id', authenticate, requireRole('admin'), studentController.adminDeleteStudent);
+router.delete('/:id', authenticate, requireRole('admin'), studentId, validate, studentController.adminDeleteStudent);
 
 module.exports = router;

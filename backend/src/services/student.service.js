@@ -14,12 +14,6 @@ const STUDENT_SELECT = `
   FROM users u
   LEFT JOIN branches b ON b.id = u.branch_id`;
 
-function passwordFromDob(dob) {
-  const match = String(dob || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) throw new ApiError(422, 'Student date of birth is required for the default password');
-  return `${match[3]}${match[2]}${match[1]}`;
-}
-
 async function getStudentProfile(userId) {
   const rows = await query(`${STUDENT_SELECT} WHERE u.id = $1 AND u.is_active = true LIMIT 1`, [userId]);
   if (!rows[0]) throw new ApiError(404, 'Student not found');
@@ -168,7 +162,8 @@ async function adminCreateStudent(payload, actingAdminId) {
   if (!Number.isInteger(semester) || semester < 1 || semester > 6) {
     throw new ApiError(422, 'Semester must be from 1 to 6');
   }
-  const passwordHash = await bcrypt.hash(payload.password || passwordFromDob(payload.dob), 12);
+  if (!payload.password) throw new ApiError(422, 'A strong initial password is required');
+  const passwordHash = await bcrypt.hash(payload.password, 12);
   try {
     const rows = await query(
       `INSERT INTO users (
