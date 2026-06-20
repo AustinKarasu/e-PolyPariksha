@@ -27,7 +27,8 @@ class _SecurityLogScreenState extends State<SecurityLogScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exam Activity'),
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
+        flexibleSpace: Container(
+            decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
       ),
       body: RefreshIndicator(
         color: AppTheme.primary,
@@ -36,7 +37,8 @@ class _SecurityLogScreenState extends State<SecurityLogScreen> {
           future: _events,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+              return const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary));
             }
             if (snapshot.hasError) {
               return ListView(children: const [
@@ -62,9 +64,12 @@ class _EventList extends StatelessWidget {
     if (events.isEmpty) {
       return ListView(children: [
         const SizedBox(height: 120),
-        Icon(Icons.history_rounded, size: 64, color: AppTheme.primaryLight.withValues(alpha: 0.3)),
+        Icon(Icons.history_rounded,
+            size: 64, color: AppTheme.primaryLight.withValues(alpha: 0.3)),
         const SizedBox(height: 16),
-        Text('No exam activity yet', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+        Text('No exam activity yet',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium),
       ]);
     }
     final format = DateFormat('dd MMM, hh:mm:ss a');
@@ -76,7 +81,11 @@ class _EventList extends StatelessWidget {
         final event = events[index];
         final isCritical = event.severity == 'critical';
         final isWarning = event.severity == 'warning';
-        final color = isCritical ? AppTheme.error : isWarning ? AppTheme.accent : AppTheme.primary;
+        final color = isCritical
+            ? AppTheme.error
+            : isWarning
+                ? AppTheme.accent
+                : AppTheme.primary;
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).cardTheme.color,
@@ -84,7 +93,8 @@ class _EventList extends StatelessWidget {
             border: Border.all(color: color.withValues(alpha: 0.18)),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             leading: Container(
               width: 36,
               height: 36,
@@ -113,9 +123,15 @@ class _EventList extends StatelessWidget {
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '${event.branchName} - ${event.testTitle}\n${event.message ?? ''}',
-                style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.65)),
-                maxLines: 3,
+                '${event.branchName} - ${event.testTitle}\n${event.studentEmail ?? 'Email not available'}\n${event.message ?? ''}',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color
+                        ?.withValues(alpha: 0.65)),
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -124,7 +140,13 @@ class _EventList extends StatelessWidget {
               child: Text(
                 format.format(event.createdAt),
                 textAlign: TextAlign.end,
-                style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.55)),
+                style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color
+                        ?.withValues(alpha: 0.55)),
               ),
             ),
             isThreeLine: true,

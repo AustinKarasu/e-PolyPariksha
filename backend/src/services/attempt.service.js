@@ -171,7 +171,7 @@ async function listEvents(filters = {}, adminUser) {
   return query(
     `SELECT e.id, e.attempt_id, e.test_id, e.student_id, e.branch_id, e.event_type,
             e.severity, e.message, e.metadata, e.ip_address, e.user_agent, e.created_at,
-            u.full_name AS student_name, u.college_id, b.name AS branch_name, b.code AS branch_code,
+            u.full_name AS student_name, u.email AS student_email, u.college_id, b.name AS branch_name, b.code AS branch_code,
             t.title AS test_title
      FROM exam_events e
      JOIN users u ON u.id = e.student_id

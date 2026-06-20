@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/forgot_password_dialog.dart';
+import '../services/saved_admin_credentials_service.dart';
 import 'admin_register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<Offset> _slideUp;
   bool _obscurePassword = true;
   bool _showTotp = false;
+  bool _saveCredentials = false;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen>
         .animate(CurvedAnimation(
             parent: _animController, curve: Curves.easeOutCubic));
     _animController.forward();
+    _loadSavedCredentials();
   }
 
   @override
@@ -227,6 +230,17 @@ class _LoginScreenState extends State<LoginScreen>
                                       : null,
                                 ),
                               ],
+                              CheckboxListTile(
+                                value: _saveCredentials,
+                                onChanged: (value) => setState(
+                                    () => _saveCredentials = value ?? false),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                title: const Text('Save login details'),
+                                subtitle: const Text(
+                                    'Use only on your personal device.'),
+                              ),
                               const SizedBox(height: 8),
                               if (auth.error != null) ...[
                                 const SizedBox(height: 8),
@@ -335,7 +349,28 @@ class _LoginScreenState extends State<LoginScreen>
         _totpController.clear();
       });
     } else if (mounted && auth.isAuthenticated) {
+      await _saveOrClearCredentials(identifier, password);
       Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final saved = await SavedAdminCredentialsService().read();
+    if (!mounted || saved == null) return;
+    setState(() {
+      _identifierController.text = saved.identifier;
+      _passwordController.text = saved.password;
+      _saveCredentials = true;
+    });
+  }
+
+  Future<void> _saveOrClearCredentials(
+      String identifier, String password) async {
+    final storage = SavedAdminCredentialsService();
+    if (_saveCredentials) {
+      await storage.save(identifier, password);
+    } else {
+      await storage.clear();
     }
   }
 

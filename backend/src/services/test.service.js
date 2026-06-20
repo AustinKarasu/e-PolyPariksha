@@ -207,8 +207,11 @@ async function removeTest(id, adminId) {
       [id]
     );
   });
-  await notificationService.notifyTest(cancelledTest, 'cancelled');
-  return cancelledTest;
+  const shouldNotifyCancellation = new Date(cancelledTest.scheduled_end) > new Date();
+  if (shouldNotifyCancellation) {
+    await notificationService.notifyTest(cancelledTest, 'cancelled');
+  }
+  return { ...cancelledTest, cancellation_notified: shouldNotifyCancellation };
 }
 
 async function getStudentPdf(testId, user, context = {}) {

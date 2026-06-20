@@ -85,7 +85,12 @@ async function replacePdf(req, res, next) {
 async function removeTest(req, res, next) {
   try {
     const test = await testService.removeTest(Number(req.params.id), req.user.sub);
-    res.json({ test, message: 'Test cancelled and eligible users have been notified.' });
+    res.json({
+      test,
+      message: test.cancellation_notified
+        ? 'Test cancelled and eligible users have been notified.'
+        : 'Ended test removed. No cancellation email was sent.'
+    });
   } catch (err) {
     next(err);
   }
