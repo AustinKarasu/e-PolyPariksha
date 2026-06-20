@@ -1,4 +1,4 @@
-# PolyH.T REST API
+# e-PolyPariksha HP REST API
 
 Base URL: `http://localhost:4000/api`
 

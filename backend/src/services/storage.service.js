@@ -21,6 +21,11 @@ function getS3Client() {
 }
 
 async function savePdf(file) {
+  const bytes = await getUploadedFileBytes(file);
+  if (!bytes.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+    await discardUploadedFile(file);
+    throw new ApiError(422, 'The uploaded file is not a valid PDF');
+  }
   if (env.storage.driver === 's3') {
     if (!env.storage.s3.bucket) {
       throw new ApiError(500, 'S3 bucket is not configured');
@@ -29,7 +34,7 @@ async function savePdf(file) {
     await getS3Client().send(new PutObjectCommand({
       Bucket: env.storage.s3.bucket,
       Key: key,
-      Body: file.buffer,
+      Body: bytes,
       ContentType: 'application/pdf'
     }));
     return { key, path: key };
@@ -50,6 +55,11 @@ async function saveProfilePhoto(file) {
     ? inferredType || 'application/octet-stream'
     : file.mimetype;
   const bytes = file.buffer || await fs.readFile(file.path);
+
+  if (!isValidImage(bytes, contentType)) {
+    await discardUploadedFile(file);
+    throw new ApiError(422, 'The uploaded file is not a valid PNG, JPG, or WEBP image');
+  }
 
   if (contentType.startsWith('image/')) {
     return `data:${contentType};base64,${bytes.toString('base64')}`;
@@ -136,6 +146,17 @@ function contentTypeForName(name) {
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
   if (lower.endsWith('.webp')) return 'image/webp';
   return null;
+}
+
+function isValidImage(bytes, contentType) {
+  if (contentType === 'image/png') return bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (contentType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (contentType === 'image/webp') return bytes.length >= 12 && bytes.subarray(0, 4).equals(Buffer.from('RIFF')) && bytes.subarray(8, 12).equals(Buffer.from('WEBP'));
+  return false;
+}
+
+async function discardUploadedFile(file) {
+  if (file?.path) await fs.unlink(file.path).catch(() => {});
 }
 
 module.exports = { savePdf, saveProfilePhoto, deletePdf, getPdfDelivery, getUploadedFileBytes };

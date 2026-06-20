@@ -5,7 +5,7 @@
 - JWT authentication for admin and student apps.
 - JWT sessions are checked against `auth_sessions`, so logout/revocation works server-side.
 - Role checks on admin-only and student-only routes.
-- Bcrypt password hashes in Supabase PostgreSQL.
+- Bcrypt password hashes in PostgreSQL.
 - PDF upload validation by MIME type and size limit.
 - Server-side branch checks before student PDF download.
 - Server-side schedule checks before PDF access.

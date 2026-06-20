@@ -2,22 +2,18 @@ const bcrypt = require('bcryptjs');
 const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 const storageService = require('./storage.service');
+const emailOtpService = require('./email-otp.service');
 
 const STUDENT_SELECT = `
   SELECT u.id, u.full_name, u.email, u.college_id, u.role, u.branch_id,
          u.dob, u.semester, u.roll_no, u.board_roll_no, u.college_name,
          u.course_name, u.guardian_name, u.phone, u.address,
-         u.admission_year, u.dropout_year, u.photo_url, u.is_active, u.two_factor_enabled, u.created_at,
+         u.admission_year, u.dropout_year, u.photo_url, u.is_active, u.two_factor_enabled,
+         u.must_change_credentials, u.created_at,
          u.created_by_admin_id,
          b.name AS branch_name, b.code AS branch_code
   FROM users u
   LEFT JOIN branches b ON b.id = u.branch_id`;
-
-function passwordFromDob(dob) {
-  const match = String(dob || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) throw new ApiError(422, 'Student date of birth is required for the default password');
-  return match[0];
-}
 
 async function getStudentProfile(userId) {
   const rows = await query(`${STUDENT_SELECT} WHERE u.id = $1 AND u.is_active = true LIMIT 1`, [userId]);
@@ -26,6 +22,15 @@ async function getStudentProfile(userId) {
 }
 
 async function updateStudentProfile(userId, patch) {
+  const existingRows = await query('SELECT email FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1', [userId, 'student']);
+  const existing = existingRows[0];
+  if (!existing) throw new ApiError(401, 'Student account is inactive or no longer exists');
+  const nextEmail = String(patch.email || '').trim().toLowerCase();
+  if (patch.email !== undefined && nextEmail && nextEmail !== String(existing.email || '').trim().toLowerCase()) {
+    if (!patch.emailOtpCode) throw new ApiError(428, 'Verify the new email address before saving it');
+    await emailOtpService.verifyOtp(nextEmail, 'email_change', patch.emailOtpCode);
+    patch.email = nextEmail;
+  }
   const allowed = ['email', 'phone', 'address', 'guardian_name'];
   const sets = [];
   const params = [];
@@ -43,6 +48,16 @@ async function updateStudentProfile(userId, patch) {
   params.push(userId);
   await query(`UPDATE users SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`, params);
   return getStudentProfile(userId);
+}
+
+async function requestStudentEmailChangeOtp(userId, email) {
+  const requested = String(email || '').trim().toLowerCase();
+  if (!requested) throw new ApiError(422, 'A new email address is required');
+  const rows = await query('SELECT email FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1', [userId, 'student']);
+  if (!rows[0]) throw new ApiError(401, 'Student account is inactive or no longer exists');
+  if (requested === String(rows[0].email || '').trim().toLowerCase()) throw new ApiError(422, 'Enter a different email address');
+  await emailOtpService.sendOtp(requested, 'email_change', 'e-PolyPariksha HP email change verification code');
+  return { status: 'sent' };
 }
 
 async function updateStudentPhoto(userId, file) {
@@ -127,7 +142,6 @@ async function adminCreateStudent(payload, actingAdminId) {
   const requiredFields = [
     ['fullName', 'Full name'],
     ['collegeId', 'College ID'],
-    ['password', 'Password'],
     ['email', 'Email'],
     ['dob', 'Date of birth'],
     ['semester', 'Semester'],
@@ -149,15 +163,16 @@ async function adminCreateStudent(payload, actingAdminId) {
   if (!Number.isInteger(semester) || semester < 1 || semester > 6) {
     throw new ApiError(422, 'Semester must be from 1 to 6');
   }
-  const passwordHash = await bcrypt.hash(payload.password || passwordFromDob(payload.dob), 12);
+  const dobPassword = defaultDobPassword(payload.dob);
+  const passwordHash = await bcrypt.hash(payload.password || dobPassword, 12);
   try {
     const rows = await query(
       `INSERT INTO users (
         full_name, email, college_id, password_hash, role, branch_id,
         dob, semester, roll_no, board_roll_no, college_name, course_name,
-        guardian_name, phone, address, admission_year, dropout_year, created_by_admin_id, is_active
+        guardian_name, phone, address, admission_year, dropout_year, created_by_admin_id, is_active, must_change_credentials
       )
-      VALUES ($1, $2, $3, $4, 'student', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE)
+      VALUES ($1, $2, $3, $4, 'student', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE, $18)
       RETURNING id`,
       [
         payload.fullName,
@@ -176,7 +191,8 @@ async function adminCreateStudent(payload, actingAdminId) {
         payload.address,
         payload.admissionYear,
         payload.dropoutYear,
-        actingAdminId
+        actingAdminId,
+        !payload.password
       ]
     );
     return getStudentById(rows[0].id, actingAdminId);
@@ -240,9 +256,19 @@ async function adminDeleteStudent(studentId, actingAdminId) {
   return student;
 }
 
+function defaultDobPassword(dob) {
+  const text = String(dob || '').trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+  if (iso) return `${iso[3].padStart(2, '0')}${iso[2].padStart(2, '0')}${iso[1]}`;
+  const dayFirst = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(text);
+  if (dayFirst) return `${dayFirst[1].padStart(2, '0')}${dayFirst[2].padStart(2, '0')}${dayFirst[3]}`;
+  throw new ApiError(422, 'Date of birth must be a valid date');
+}
+
 module.exports = {
   getStudentProfile,
   updateStudentProfile,
+  requestStudentEmailChangeOtp,
   updateStudentPhoto,
   adminUpdateStudentPhoto,
   listAllStudents,

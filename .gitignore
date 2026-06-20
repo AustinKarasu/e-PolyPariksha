@@ -1,4 +1,5 @@
 node_modules/
+AppRelease/
 .env
 .env.*
 !.env.example
@@ -6,6 +7,7 @@ node_modules/
 !*.env.example
 uploads/
 build/
+dist/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies

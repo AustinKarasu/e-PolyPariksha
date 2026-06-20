@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+const jwtSecret = process.env.JWT_SECRET || '';
+if (process.env.NODE_ENV === 'production' && (jwtSecret.length < 32 || jwtSecret === 'dev_secret_change_me')) {
+  throw new Error('JWT_SECRET must be a unique value of at least 32 characters in production');
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 4000),
@@ -13,7 +18,7 @@ const env = {
     globalMax: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 120)
   },
   db: {
-    connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '',
+    connectionString: process.env.DATABASE_URL || '',
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 5432),
     user: process.env.DB_USER || 'postgres',
@@ -21,8 +26,10 @@ const env = {
     database: process.env.DB_NAME || 'postgres',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_SSL === '1'
   },
-  jwtSecret: process.env.JWT_SECRET || 'dev_secret_change_me',
+  jwtSecret: jwtSecret || 'dev_secret_change_me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
+  jwtIssuer: process.env.JWT_ISSUER || 'epolypariksha-hp-api',
+  jwtAudience: process.env.JWT_AUDIENCE || 'epolypariksha-hp-mobile',
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   storage: {
     driver: process.env.STORAGE_DRIVER || 'local',
@@ -34,6 +41,14 @@ const env = {
       endpoint: process.env.S3_ENDPOINT || '',
       publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || ''
     }
+  },
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === '1',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.MAIL_FROM || process.env.SMTP_USER || ''
   }
 };
 

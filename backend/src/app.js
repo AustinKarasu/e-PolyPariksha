@@ -7,6 +7,7 @@ const branchRoutes = require('./routes/branch.routes');
 const testRoutes = require('./routes/test.routes');
 const attemptRoutes = require('./routes/attempt.routes');
 const studentRoutes = require('./routes/student.routes');
+const appErrorRoutes = require('./routes/app-error.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const {
   compression,
@@ -27,11 +28,11 @@ app.use(globalLimiter);
 app.use(express.json({ limit: env.bodyLimit }));
 
 if (env.storage.driver === 'local') {
-  app.use('/uploads', express.static(process.env.VERCEL ? '/tmp' : path.resolve(env.uploadDir)));
+  app.use('/uploads', express.static(path.resolve(env.uploadDir)));
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'polyht-api' });
+  res.json({ status: 'ok', service: 'epolypariksha-hp-api' });
 });
 
 app.use('/api/auth', authRoutes);
@@ -40,6 +41,7 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/attempts', attemptRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/app-errors', appErrorRoutes);
 app.use(errorHandler);
 
 module.exports = app;

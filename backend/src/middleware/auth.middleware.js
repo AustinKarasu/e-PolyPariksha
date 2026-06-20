@@ -5,21 +5,27 @@ const { ApiError } = require('../utils/api-error');
 
 async function authenticate(req, _res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = /^Bearer\s+([A-Za-z0-9._-]{20,4096})$/.exec(header)?.[1] || null;
 
   if (!token) {
     return next(new ApiError(401, 'Authentication token is required'));
   }
 
   try {
-    const payload = jwt.verify(token, env.jwtSecret);
+    const payload = jwt.verify(token, env.jwtSecret, {
+      algorithms: ['HS256'], issuer: env.jwtIssuer, audience: env.jwtAudience
+    });
+    if (!Number.isInteger(payload.sub) || !['admin', 'student'].includes(payload.role) || typeof payload.jti !== 'string') {
+      return next(new ApiError(401, 'Invalid authentication token'));
+    }
     const sessions = await query(
       `SELECT s.id, u.branch_id, u.semester, u.created_by_admin_id
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
-       WHERE s.token_jti = $1 AND s.revoked_at IS NULL AND s.expires_at > CURRENT_TIMESTAMP
+       WHERE s.token_jti = $1 AND s.user_id = $2 AND u.role = $3 AND u.is_active = true
+         AND s.revoked_at IS NULL AND s.expires_at > CURRENT_TIMESTAMP
        LIMIT 1`,
-      [payload.jti]
+      [payload.jti, payload.sub, payload.role]
     );
     if (!sessions[0]) {
       return next(new ApiError(401, 'Session expired or revoked'));

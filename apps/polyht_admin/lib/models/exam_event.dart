@@ -12,6 +12,7 @@ class ExamEvent {
     this.studentId,
     this.message,
     this.collegeId,
+    this.studentEmail,
   });
 
   final int id;
@@ -26,6 +27,7 @@ class ExamEvent {
   final DateTime createdAt;
   final String? message;
   final String? collegeId;
+  final String? studentEmail;
 
   factory ExamEvent.fromJson(Map<String, dynamic> json) {
     return ExamEvent(
@@ -41,6 +43,7 @@ class ExamEvent {
       createdAt: DateTime.parse(json['created_at'] as String),
       message: json['message'] as String?,
       collegeId: json['college_id'] as String?,
+      studentEmail: json['student_email'] as String?,
     );
   }
 }

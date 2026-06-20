@@ -291,14 +291,10 @@ class _AddStudentScreenState extends State<_AddStudentScreen> {
     return text.contains('@') ? null : 'Enter a valid email';
   }
 
-  String? _strongPassword(String? value) {
+  String? _optionalLoginPassword(String? value) {
     final password = value ?? '';
-    if (password.isEmpty) return 'Required';
-    if (password.length < 8) return 'Use at least 8 characters';
-    if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Add an uppercase letter';
-    if (!RegExp(r'[a-z]').hasMatch(password)) return 'Add a lowercase letter';
-    if (!RegExp(r'[0-9]').hasMatch(password)) return 'Add a number';
-    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) return 'Add a symbol';
+    if (password.isEmpty) return null;
+    if (password.length < 4) return 'Use at least 4 characters';
     return null;
   }
 
@@ -360,7 +356,7 @@ class _AddStudentScreenState extends State<_AddStudentScreen> {
         dob: _dobController.text.trim(),
         branchId: _selectedBranch!.id,
         collegeId: _collegeIdController.text.trim(),
-        password: _passwordController.text,
+        password: _passwordController.text.trim(),
         email: _emailController.text.trim(),
         semester: _selectedSemester!,
         rollNo: _rollNoController.text.trim(),
@@ -447,9 +443,11 @@ class _AddStudentScreenState extends State<_AddStudentScreen> {
                 TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Login password'),
-                    validator: _strongPassword),
+                    decoration: const InputDecoration(
+                      labelText: 'Login password (optional)',
+                      helperText: 'Leave blank to use DOB as DDMMYYYY, for example 25042008.',
+                    ),
+                    validator: _optionalLoginPassword),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _dobController,
@@ -955,14 +953,10 @@ class _EditStudentScreenState extends State<_EditStudentScreen> {
     }
   }
 
-  String? _optionalStrongPassword(String? value) {
+  String? _optionalLoginPassword(String? value) {
     final password = value ?? '';
     if (password.isEmpty) return null;
-    if (password.length < 8) return 'Use at least 8 characters';
-    if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Add an uppercase letter';
-    if (!RegExp(r'[a-z]').hasMatch(password)) return 'Add a lowercase letter';
-    if (!RegExp(r'[0-9]').hasMatch(password)) return 'Add a number';
-    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) return 'Add a symbol';
+    if (password.length < 4) return 'Use at least 4 characters';
     return null;
   }
 
@@ -1049,8 +1043,10 @@ class _EditStudentScreenState extends State<_EditStudentScreen> {
                     controller: _passwordController,
                     obscureText: true,
                     decoration: const InputDecoration(
-                        labelText: 'New password (optional)'),
-                    validator: _optionalStrongPassword),
+                      labelText: 'New password (optional)',
+                      helperText: 'Leave blank to keep current password.',
+                    ),
+                    validator: _optionalLoginPassword),
                 const SizedBox(height: 12),
                 SwitchListTile(
                   value: _isActive,

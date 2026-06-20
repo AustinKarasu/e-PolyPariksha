@@ -47,4 +47,4 @@ SET is_primary_admin = TRUE,
     is_active = TRUE,
     updated_at = CURRENT_TIMESTAMP
 WHERE role = 'admin'
-  AND lower(email) = 'admin@gpkangra.edu';
+  AND lower(email) = 'aayankarasu@gmail.com';

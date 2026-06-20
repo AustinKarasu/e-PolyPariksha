@@ -74,6 +74,8 @@ async function ensureRuntimeSchema() {
         ADD COLUMN IF NOT EXISTS created_by_admin_id INT REFERENCES users(id),
         ADD COLUMN IF NOT EXISTS state_name VARCHAR(80),
         ADD COLUMN IF NOT EXISTS dropout_year INT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS biometric_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_credentials BOOLEAN NOT NULL DEFAULT FALSE;
 
       CREATE TABLE IF NOT EXISTS admin_applications (
         id SERIAL PRIMARY KEY,
@@ -97,12 +99,82 @@ async function ensureRuntimeSchema() {
       CREATE INDEX IF NOT EXISTS idx_tests_created_by ON tests(created_by);
       CREATE INDEX IF NOT EXISTS idx_admin_applications_status ON admin_applications(status);
 
+      CREATE TABLE IF NOT EXISTS email_otps (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(160) NOT NULL,
+        purpose VARCHAR(40) NOT NULL,
+        code_hash VARCHAR(64) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        consumed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_otps_lookup
+        ON email_otps (email, purpose, expires_at);
+
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token_nonce UUID PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user
+        ON password_reset_tokens (user_id, expires_at);
+
+      CREATE TABLE IF NOT EXISTS otp_security (
+        email VARCHAR(160) NOT NULL,
+        purpose VARCHAR(40) NOT NULL,
+        failed_attempts INT NOT NULL DEFAULT 0,
+        failed_window_started_at TIMESTAMPTZ,
+        locked_until TIMESTAMPTZ,
+        PRIMARY KEY (email, purpose)
+      );
+
+      CREATE TABLE IF NOT EXISTS email_notifications (
+        id SERIAL PRIMARY KEY,
+        event_key VARCHAR(255) NOT NULL UNIQUE,
+        event_type VARCHAR(40) NOT NULL,
+        test_id INT REFERENCES tests(id) ON DELETE CASCADE,
+        recipient_email VARCHAR(160) NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_notifications_test ON email_notifications (test_id, event_type);
+
+      CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        device_key VARCHAR(64) NOT NULL,
+        verified_until TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, device_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS app_error_reports (
+        id SERIAL PRIMARY KEY,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        severity VARCHAR(20) NOT NULL DEFAULT 'error' CHECK (severity IN ('error', 'crash')),
+        source VARCHAR(40) NOT NULL DEFAULT 'flutter',
+        page VARCHAR(120),
+        message TEXT NOT NULL,
+        stack_trace TEXT,
+        device_platform VARCHAR(80),
+        device_model VARCHAR(160),
+        app_version VARCHAR(40),
+        app_build VARCHAR(40),
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_app_error_reports_created ON app_error_reports(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_app_error_reports_user ON app_error_reports(user_id);
+
       UPDATE users
       SET is_primary_admin = TRUE,
           is_active = TRUE,
           updated_at = CURRENT_TIMESTAMP
       WHERE role = 'admin'
-        AND lower(email) = 'admin@gpkangra.edu';
+        AND lower(email) = 'aayankarasu@gmail.com';
     `).catch((err) => {
       runtimeSchemaReady = null;
       throw err;

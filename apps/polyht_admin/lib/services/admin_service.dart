@@ -1,4 +1,5 @@
 import '../models/admin_account.dart';
+import '../models/admin_analytics.dart';
 import '../models/admin_application.dart';
 import '../models/app_user.dart';
 import 'api_client.dart';
@@ -31,7 +32,7 @@ class AdminService {
       AdminAccount(
         id: currentUser.id,
         fullName: currentUser.fullName,
-        email: currentUser.email ?? 'admin@gpkangra.edu',
+        email: currentUser.email ?? 'admin@gpkangra.gov.in',
         isActive: currentUser.isActive ?? true,
         twoFactorEnabled: currentUser.twoFactorEnabled ?? false,
         isPrimaryAdmin: currentUser.isPrimaryAdmin ?? true,
@@ -63,12 +64,30 @@ class AdminService {
     required String fullName,
     required String email,
     required String password,
+    String? otpCode,
   }) async {
     await _apiClient.post('/admins', {
       'fullName': fullName,
       'email': email,
       'password': password,
+      if (otpCode != null && otpCode.isNotEmpty) 'otpCode': otpCode,
     });
+  }
+
+  Future<void> requestCreateAdminOtp() async {
+    await _apiClient.post('/admins/request-create-otp', {});
+  }
+
+  Future<AdminAnalytics> fetchAnalytics() async {
+    final data = await _apiClient.get('/admins/analytics');
+    return AdminAnalytics.fromJson(data['analytics'] as Map<String, dynamic>);
+  }
+
+  Future<List<AppErrorReport>> fetchAppErrors({int limit = 50}) async {
+    final data = await _apiClient.get('/admins/app-errors?limit=$limit');
+    return (data['reports'] as List)
+        .map((item) => AppErrorReport.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> setActive(int adminId, bool isActive) async {
@@ -94,8 +113,10 @@ class AdminService {
     await _apiClient.delete('/admins/applications/$applicationId');
   }
 
-  Future<void> setPrimary(int adminId) async {
-    await _apiClient.patch('/admins/$adminId/primary', {});
+  Future<void> setPrimary(int adminId, {String? otpCode}) async {
+    await _apiClient.patch('/admins/$adminId/primary', {
+      if (otpCode != null && otpCode.isNotEmpty) 'otpCode': otpCode,
+    });
   }
 
   Future<void> deleteAdmin(int adminId) async {

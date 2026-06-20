@@ -5,6 +5,20 @@ const { query } = require('../config/db');
 const { env } = require('../config/env');
 const { ApiError } = require('../utils/api-error');
 const storageService = require('./storage.service');
+const emailOtpService = require('./email-otp.service');
+const notificationService = require('./notification.service');
+
+const OTP_PURPOSES = {
+  adminLogin: 'admin_login',
+  adminRegister: 'admin_register',
+  emailChange: 'email_change',
+  passwordChange: 'password_change',
+  passwordReset: 'password_reset'
+};
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
 
 async function login(identifier, password, context = {}) {
   await assertLoginAllowed(identifier, context.ipAddress);
@@ -14,7 +28,7 @@ async function login(identifier, password, context = {}) {
             u.branch_id, u.is_active, u.dob, u.semester, u.roll_no, u.board_roll_no,
             u.college_name, u.course_name, u.guardian_name, u.phone, u.address,
             u.admission_year, u.photo_url, u.two_factor_enabled, u.two_factor_secret,
-            u.is_primary_admin,
+            u.is_primary_admin, u.must_change_credentials,
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
@@ -37,7 +51,17 @@ async function login(identifier, password, context = {}) {
     throw new ApiError(401, 'Invalid credentials');
   }
 
-  if (user.two_factor_enabled) {
+  if (user.role === 'admin') {
+    const trustedDevice = await hasTrustedAdminDevice(user.id, context.deviceLabel);
+    if (!trustedDevice && !context.emailOtpCode) {
+      await emailOtpService.sendOtp(user.email, OTP_PURPOSES.adminLogin, 'e-PolyPariksha HP admin sign-in code');
+      return { requiresEmailOtp: true, message: 'Email OTP sent to your admin email.' };
+    }
+    if (!trustedDevice) {
+      await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.adminLogin, context.emailOtpCode);
+      await trustAdminDevice(user.id, context.deviceLabel);
+    }
+  } else if (user.two_factor_enabled) {
     if (!context.totpCode) {
       return { requiresTwoFactor: true, message: 'Authenticator code required' };
     }
@@ -47,11 +71,21 @@ async function login(identifier, password, context = {}) {
     }
   }
 
+  const usesDobPassword = user.role === 'student' && isDobPassword(user.dob, password);
+  const requiresCredentialSetup =
+    user.role === 'student' && (user.must_change_credentials === true || usesDobPassword);
+  if (requiresCredentialSetup && user.must_change_credentials !== true) {
+    await query(
+      'UPDATE users SET must_change_credentials = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+    user.must_change_credentials = true;
+  }
   const jti = crypto.randomUUID();
   const token = jwt.sign(
-    { sub: user.id, role: user.role, branchId: user.branch_id, semester: user.semester, jti },
+    { sub: user.id, role: user.role, branchId: user.branch_id, semester: user.semester, jti, mustChangeCredentials: requiresCredentialSetup },
     env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
+    { expiresIn: env.jwtExpiresIn, algorithm: 'HS256', issuer: env.jwtIssuer, audience: env.jwtAudience }
   );
   const decoded = jwt.decode(token);
 
@@ -62,7 +96,33 @@ async function login(identifier, password, context = {}) {
   );
   await clearLoginFailures(identifier, context.ipAddress);
 
-  return { token, user: sanitizeUser(user) };
+  return { token, user: sanitizeUser(user), requiresCredentialSetup };
+}
+
+async function requestInitialCredentialsOtp(userId, email) {
+  const requestedEmail = normalizeEmail(email);
+  const rows = await query('SELECT role, must_change_credentials FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (rows[0]?.role !== 'student' || !rows[0].must_change_credentials) throw new ApiError(403, 'Initial credential setup is not required');
+  await emailOtpService.sendOtp(requestedEmail, 'initial_credentials', 'Verify your new e-PolyPariksha HP email');
+  return { status: 'sent' };
+}
+
+async function completeInitialCredentials(userId, { email, emailOtpCode, newPassword }) {
+  const requestedEmail = normalizeEmail(email);
+  const rows = await query('SELECT role, must_change_credentials FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (rows[0]?.role !== 'student' || !rows[0].must_change_credentials) throw new ApiError(403, 'Initial credential setup is not required');
+  await emailOtpService.verifyOtp(requestedEmail, 'initial_credentials', emailOtpCode);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  try {
+    await query(
+      'UPDATE users SET email = $1, password_hash = $2, must_change_credentials = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [requestedEmail, passwordHash, userId]
+    );
+  } catch (err) {
+    if (err.code === '23505') throw new ApiError(409, 'This email address is already used by another account');
+    throw err;
+  }
+  return getCurrentUser(userId);
 }
 
 async function registerAdmin(payload) {
@@ -79,6 +139,7 @@ async function registerAdmin(payload) {
   if (!email || !college || !state || !payload.password) {
     throw new ApiError(422, 'All fields except middle name are required');
   }
+  await emailOtpService.verifyOtp(email, OTP_PURPOSES.adminRegister, payload.emailOtpCode);
 
   const passwordHash = await bcrypt.hash(payload.password, 12);
   const existing = await query('SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1', [email]);
@@ -124,12 +185,18 @@ async function registerAdmin(payload) {
   }
 }
 
+async function requestAdminRegistrationOtp(email) {
+  await emailOtpService.sendOtp(email, OTP_PURPOSES.adminRegister, 'e-PolyPariksha HP admin registration code');
+  return { status: 'sent' };
+}
+
 async function getCurrentUser(userId) {
   const rows = await query(
     `SELECT u.id, u.full_name, u.email, u.college_id, u.role,
             u.branch_id, u.dob, u.semester, u.roll_no, u.board_roll_no,
             u.college_name, u.course_name, u.guardian_name, u.phone, u.address,
             u.admission_year, u.photo_url, u.two_factor_enabled, u.is_primary_admin,
+            u.must_change_credentials,
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
@@ -145,6 +212,14 @@ async function getCurrentUser(userId) {
 }
 
 async function updateCurrentUser(userId, patch) {
+  const current = await query('SELECT email FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (!current[0]) throw new ApiError(401, 'User account is inactive or no longer exists');
+  const requestedEmail = patch.email === undefined ? undefined : normalizeEmail(patch.email);
+  if (requestedEmail && requestedEmail !== normalizeEmail(current[0].email)) {
+    if (!patch.emailOtpCode) throw new ApiError(428, 'Verify the new email address before saving it');
+    await emailOtpService.verifyOtp(requestedEmail, OTP_PURPOSES.emailChange, patch.emailOtpCode);
+    patch.email = requestedEmail;
+  }
   const allowed = ['full_name', 'email', 'phone', 'address', 'guardian_name'];
   const sets = [];
   const params = [];
@@ -167,6 +242,16 @@ async function updateCurrentUser(userId, patch) {
   return getCurrentUser(userId);
 }
 
+async function requestEmailChangeOtp(userId, email) {
+  const requestedEmail = normalizeEmail(email);
+  if (!requestedEmail) throw new ApiError(422, 'A new email address is required');
+  const rows = await query('SELECT email FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (!rows[0]) throw new ApiError(401, 'User account is inactive or no longer exists');
+  if (requestedEmail === normalizeEmail(rows[0].email)) throw new ApiError(422, 'Enter a different email address');
+  await emailOtpService.sendOtp(requestedEmail, OTP_PURPOSES.emailChange, 'e-PolyPariksha HP email change verification code');
+  return { status: 'sent' };
+}
+
 async function updateCurrentUserPhoto(userId, file) {
   if (!file) throw new ApiError(422, 'Profile photo is required');
   const photoUrl = await storageService.saveProfilePhoto(file);
@@ -174,34 +259,112 @@ async function updateCurrentUserPhoto(userId, file) {
   return getCurrentUser(userId);
 }
 
-async function changeCurrentUserPassword(userId, { currentPassword, newPassword, totpCode }) {
+async function requestPasswordChangeOtp(userId) {
+  const rows = await query('SELECT email FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (!rows[0]?.email) throw new ApiError(422, 'An email address is required to change your password');
+  await emailOtpService.sendOtp(rows[0].email, OTP_PURPOSES.passwordChange, 'e-PolyPariksha HP password change verification code');
+  return { status: 'sent' };
+}
+
+async function requestPasswordReset(email, role) {
+  const normalizedEmail = normalizeEmail(email);
+  const requestedRole = normalizeResetRole(role);
   const rows = await query(
-    `SELECT id, password_hash, two_factor_enabled, two_factor_secret
+    `SELECT id, email FROM users
+     WHERE lower(email) = lower($1) AND role = $2 AND is_active = true
+     LIMIT 1`,
+    [normalizedEmail, requestedRole]
+  );
+  // Return the same acknowledgement for an unknown address so this public
+  // endpoint cannot be used to discover accounts.
+  if (rows[0]?.email) {
+    await emailOtpService.sendOtp(rows[0].email, OTP_PURPOSES.passwordReset, 'Reset your e-PolyPariksha HP password');
+  }
+  return { status: 'sent', message: 'If that email belongs to an active account, a verification code has been sent.' };
+}
+
+async function verifyPasswordReset(email, role, otpCode) {
+  const normalizedEmail = normalizeEmail(email);
+  const requestedRole = normalizeResetRole(role);
+  const rows = await query(
+    `SELECT id, email, role FROM users
+     WHERE lower(email) = lower($1) AND role = $2 AND is_active = true
+     LIMIT 1`,
+    [normalizedEmail, requestedRole]
+  );
+  const user = rows[0];
+  if (!user) throw new ApiError(422, 'Invalid or expired verification code');
+  await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.passwordReset, otpCode);
+  const nonce = crypto.randomUUID();
+  await query(
+    `INSERT INTO password_reset_tokens (token_nonce, user_id, expires_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '10 minutes')`,
+    [nonce, user.id]
+  );
+  const resetToken = jwt.sign(
+    { sub: user.id, role: user.role, purpose: 'password_reset', nonce },
+    env.jwtSecret,
+    { expiresIn: '10m' }
+  );
+  return { resetToken };
+}
+
+async function completePasswordReset(resetToken, newPassword) {
+  let payload;
+  try {
+    payload = jwt.verify(resetToken, env.jwtSecret);
+  } catch (_) {
+    throw new ApiError(422, 'Your reset session has expired. Request a new OTP.');
+  }
+  if (payload.purpose !== 'password_reset' || !payload.sub || !payload.nonce) {
+    throw new ApiError(422, 'Invalid password reset session');
+  }
+  const rows = await query(
+    'SELECT id, email, full_name FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1',
+    [payload.sub, payload.role]
+  );
+  const user = rows[0];
+  if (!user) throw new ApiError(401, 'User account is inactive or no longer exists');
+  const consumed = await query(
+    `DELETE FROM password_reset_tokens
+     WHERE token_nonce = $1 AND user_id = $2 AND expires_at > CURRENT_TIMESTAMP
+     RETURNING token_nonce`,
+    [payload.nonce, user.id]
+  );
+  if (!consumed[0]) throw new ApiError(422, 'This password reset session has expired or was already used.');
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [passwordHash, user.id]);
+  await query('UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND revoked_at IS NULL', [user.id]);
+  await notificationService.notifySecurityEvent(user, 'password_changed', 'Password reset completed');
+}
+
+async function changeCurrentUserPassword(userId, { newPassword, totpCode, emailOtpCode }) {
+  const rows = await query(
+    `SELECT id, email, full_name, two_factor_enabled, two_factor_secret
      FROM users WHERE id = $1 AND is_active = true LIMIT 1`,
     [userId]
   );
   const user = rows[0];
   if (!user) throw new ApiError(401, 'User account is inactive or no longer exists');
+  if (!emailOtpCode) throw new ApiError(428, 'Verify the email OTP before changing your password');
+  await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.passwordChange, emailOtpCode);
   if (user.two_factor_enabled && !verifyTotp(totpCode, user.two_factor_secret)) {
     throw new ApiError(422, 'Invalid authenticator code');
-  }
-  const matches = await bcrypt.compare(currentPassword, user.password_hash);
-  if (!matches) {
-    throw new ApiError(401, 'Current password is incorrect');
   }
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await query(
     'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
     [passwordHash, userId]
   );
+  await notificationService.notifySecurityEvent(user, 'password_changed');
 }
 
 async function setupTwoFactor(userId) {
   const user = await getCurrentUser(userId);
   const secret = generateBase32Secret();
   await query('UPDATE users SET two_factor_secret = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [secret, userId]);
-  const label = encodeURIComponent(`PolyH.T:${user.email || user.college_id || user.id}`);
-  const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=PolyH.T&algorithm=SHA1&digits=6&period=30`;
+  const label = encodeURIComponent(`e-PolyPariksha HP:${user.email || user.college_id || user.id}`);
+  const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=e-PolyPariksha HP&algorithm=SHA1&digits=6&period=30`;
   return { secret, otpauthUrl };
 }
 
@@ -253,11 +416,81 @@ function sanitizeUser(user) {
   return copy;
 }
 
+function normalizeResetRole(role) {
+  if (role !== 'admin' && role !== 'student') throw new ApiError(422, 'A valid account type is required');
+  return role;
+}
+
+function isDobPassword(dob, password) {
+  const parts = dobParts(dob);
+  return parts != null && String(password || '').trim() == `${parts.day}${parts.month}${parts.year}`;
+}
+
+function deviceKey(deviceLabel) {
+  const value = String(deviceLabel || '').trim();
+  return value ? crypto.createHash('sha256').update(value).digest('hex') : null;
+}
+
+async function hasTrustedAdminDevice(userId, deviceLabel) {
+  const key = deviceKey(deviceLabel);
+  if (!key) return false;
+  const rows = await query(
+    `SELECT 1 FROM admin_trusted_devices
+     WHERE user_id = $1 AND device_key = $2 AND verified_until > CURRENT_TIMESTAMP
+     LIMIT 1`,
+    [userId, key]
+  );
+  return Boolean(rows[0]);
+}
+
+async function trustAdminDevice(userId, deviceLabel) {
+  const key = deviceKey(deviceLabel);
+  if (!key) return;
+  await query(
+    `INSERT INTO admin_trusted_devices (user_id, device_key, verified_until, updated_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP)
+     ON CONFLICT (user_id, device_key) DO UPDATE SET
+       verified_until = EXCLUDED.verified_until,
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, key]
+  );
+}
+
+function dobParts(dob) {
+  if (!dob) return null;
+  if (dob instanceof Date && !Number.isNaN(dob.getTime())) {
+    return {
+      day: String(dob.getUTCDate()).padStart(2, '0'),
+      month: String(dob.getUTCMonth() + 1).padStart(2, '0'),
+      year: String(dob.getUTCFullYear())
+    };
+  }
+  const text = String(dob).trim();
+  const dayFirst = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(text);
+  if (dayFirst) {
+    return {
+      day: dayFirst[1].padStart(2, '0'),
+      month: dayFirst[2].padStart(2, '0'),
+      year: dayFirst[3]
+    };
+  }
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(text);
+  if (iso) {
+    return { day: iso[3].padStart(2, '0'), month: iso[2].padStart(2, '0'), year: iso[1] };
+  }
+  return null;
+}
+
 function loginFailureKey(identifier) {
   return crypto.createHash('sha256').update(String(identifier || '').trim().toLowerCase()).digest('hex');
 }
 
 async function assertLoginAllowed(identifier, ipAddress = '') {
+  await query(
+    `DELETE FROM login_failures
+     WHERE identifier_hash = $1 AND ip_address = $2 AND locked_until <= CURRENT_TIMESTAMP`,
+    [loginFailureKey(identifier), ipAddress || 'unknown']
+  );
   const rows = await query(
     `SELECT locked_until
      FROM login_failures
@@ -267,7 +500,7 @@ async function assertLoginAllowed(identifier, ipAddress = '') {
     [loginFailureKey(identifier), ipAddress || 'unknown']
   );
   if (rows[0]) {
-    throw new ApiError(429, 'Too many failed login attempts. Try again after 15 minutes.');
+    throw new ApiError(429, 'Too many failed login attempts. Try again after 5 minutes.');
   }
 }
 
@@ -278,18 +511,18 @@ async function recordLoginFailure(identifier, ipAddress = '') {
      ON CONFLICT (identifier_hash, ip_address)
      DO UPDATE SET
        failed_count = CASE
-         WHEN login_failures.last_failed_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes' THEN 1
+         WHEN login_failures.last_failed_at < CURRENT_TIMESTAMP - INTERVAL '5 minutes' THEN 1
          ELSE login_failures.failed_count + 1
        END,
        first_failed_at = CASE
-         WHEN login_failures.last_failed_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes' THEN CURRENT_TIMESTAMP
+         WHEN login_failures.last_failed_at < CURRENT_TIMESTAMP - INTERVAL '5 minutes' THEN CURRENT_TIMESTAMP
          ELSE login_failures.first_failed_at
        END,
        last_failed_at = CURRENT_TIMESTAMP,
        locked_until = CASE
-         WHEN login_failures.last_failed_at >= CURRENT_TIMESTAMP - INTERVAL '15 minutes'
-              AND login_failures.failed_count + 1 >= 5
-           THEN CURRENT_TIMESTAMP + INTERVAL '15 minutes'
+         WHEN login_failures.last_failed_at >= CURRENT_TIMESTAMP - INTERVAL '5 minutes'
+              AND login_failures.failed_count + 1 >= 8
+           THEN CURRENT_TIMESTAMP + INTERVAL '5 minutes'
          ELSE login_failures.locked_until
        END`,
     [loginFailureKey(identifier), ipAddress || 'unknown']
@@ -305,6 +538,14 @@ async function clearLoginFailures(identifier, ipAddress = '') {
 
 module.exports = {
   login,
+  requestAdminRegistrationOtp,
+  requestEmailChangeOtp,
+  requestInitialCredentialsOtp,
+  completeInitialCredentials,
+  requestPasswordChangeOtp,
+  requestPasswordReset,
+  verifyPasswordReset,
+  completePasswordReset,
   registerAdmin,
   getCurrentUser,
   updateCurrentUser,

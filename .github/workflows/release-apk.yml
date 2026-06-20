@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: "Release version name, for example 1.0.1"
+        description: "Release version name, for example 1.0.0"
         required: true
-        default: "1.0.1"
+        default: "1.0.0"
       buildNumber:
         description: "Android build number, must increase every release"
         required: true
-        default: "2"
+        default: "55"
       mandatory:
         description: "Force users to update before continuing"
         required: true
@@ -18,7 +18,7 @@ on:
       releaseNotes:
         description: "Short release notes shown in the apps"
         required: true
-        default: "Stability and security improvements."
+        default: "See the release notes for download and usage details."
   push:
     tags:
       - "v*"
@@ -80,11 +80,11 @@ jobs:
           if [ -z "$BUILD_NUMBER" ]; then BUILD_NUMBER="${GITHUB_RUN_NUMBER}"; fi
           if [ -z "$MANDATORY" ]; then MANDATORY="true"; fi
           if [ -z "$RELEASE_NOTES" ]; then RELEASE_NOTES="$(jq -r '.releaseNotes // empty' website/releases/polyht_latest.json 2>/dev/null || true)"; fi
-          if [ -z "$RELEASE_NOTES" ] || [ "$RELEASE_NOTES" = "null" ]; then RELEASE_NOTES="Poly H.T combined APK release."; fi
+          if [ -z "$RELEASE_NOTES" ] || [ "$RELEASE_NOTES" = "null" ]; then RELEASE_NOTES="e-PolyPariksha HP combined APK release."; fi
           WEBSITE_BASE_URL="${{ vars.WEBSITE_BASE_URL }}"
           if [ -z "$WEBSITE_BASE_URL" ]; then WEBSITE_BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"; fi
           API_BASE_URL="${{ vars.API_BASE_URL }}"
-          if [ -z "$API_BASE_URL" ]; then API_BASE_URL="https://backend-two-mauve-83.vercel.app/api"; fi
+          if [ -z "$API_BASE_URL" ]; then API_BASE_URL="http://150.242.202.246/api"; fi
           RELEASE_BASE_URL="https://github.com/${{ github.repository }}/releases/download/v$VERSION_NAME"
           LATEST_RELEASE_BASE_URL="https://github.com/${{ github.repository }}/releases/latest/download"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
@@ -121,7 +121,7 @@ jobs:
               "storeFile=release.jks" > "$app/android/key.properties"
           done
 
-      - name: Build Poly H.T APK
+      - name: Build e-PolyPariksha HP APK
         working-directory: apps/polyht_admin
         run: |
           flutter pub get
@@ -135,26 +135,25 @@ jobs:
         shell: bash
         run: |
           mkdir -p public/releases
-          APP_APK="polyht-v${{ steps.vars.outputs.version_name }}+${{ steps.vars.outputs.build_number }}.apk"
+          APP_APK="epolypariksha-hp-v${{ steps.vars.outputs.version_name }}+${{ steps.vars.outputs.build_number }}.apk"
           cp apps/polyht_admin/build/app/outputs/flutter-apk/app-release.apk "public/releases/$APP_APK"
           jq -n \
-            --arg appId "polyht" \
+            --arg appId "epolypariksha-hp" \
             --arg version "${{ steps.vars.outputs.version_name }}" \
             --argjson build "${{ steps.vars.outputs.build_number }}" \
             --argjson mandatory "${{ steps.vars.outputs.mandatory }}" \
             --arg notes "${{ steps.vars.outputs.release_notes }}" \
             --arg download "${{ steps.vars.outputs.release_base_url }}/$APP_APK" \
             --arg packageName "in.polyht.polyht_admin" \
-            --arg playStoreUrl "https://play.google.com/store/apps/details?id=in.polyht.polyht_admin" \
-            '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download, packageName: $packageName, usePlayStore: true, playStoreUrl: $playStoreUrl}' \
+            '{appId: $appId, latestVersion: $version, latestBuild: $build, mandatory: $mandatory, releaseNotes: $notes, downloadUrl: $download, packageName: $packageName, usePlayStore: false, playStoreUrl: ""}' \
             > public/releases/polyht_latest.json
           printf '%s\n' \
             '<!doctype html>' \
             '<html>' \
-            '<head><meta charset="utf-8"><title>Poly H.T Downloads</title></head>' \
+            '<head><meta charset="utf-8"><title>e-PolyPariksha HP Downloads</title></head>' \
             '<body>' \
-            '<h1>Poly H.T Downloads</h1>' \
-            "<p><a href=\"releases/$APP_APK\">Download Poly H.T</a></p>" \
+            '<h1>e-PolyPariksha HP Downloads</h1>' \
+            "<p><a href=\"releases/$APP_APK\">Download e-PolyPariksha HP</a></p>" \
             '</body>' \
             '</html>' > public/index.html
 
@@ -162,7 +161,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.vars.outputs.version_name }}
-          name: Poly H.T v${{ steps.vars.outputs.version_name }}
+          name: e-PolyPariksha HP v${{ steps.vars.outputs.version_name }}
           body: ${{ steps.vars.outputs.release_notes }}
           files: |
             public/releases/*.apk
@@ -190,7 +189,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Build unsigned Poly H.T iOS app
+      - name: Build unsigned e-PolyPariksha HP iOS app
         working-directory: apps/polyht_admin
         run: |
           flutter pub get
@@ -207,7 +206,7 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R "apps/polyht_admin/build/ios/iphoneos/Runner.app" Payload/
-          zip -qry "public/releases/polyht-v${{ needs.build.outputs.version_name }}+${{ needs.build.outputs.build_number }}-unsigned.ipa" Payload
+          zip -qry "public/releases/epolypariksha-hp-v${{ needs.build.outputs.version_name }}+${{ needs.build.outputs.build_number }}-unsigned.ipa" Payload
 
       - name: Attach iOS artifacts to GitHub release
         uses: softprops/action-gh-release@v2

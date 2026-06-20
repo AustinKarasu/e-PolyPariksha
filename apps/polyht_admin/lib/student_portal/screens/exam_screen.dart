@@ -40,6 +40,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
   bool _completedByTimer = false;
   bool _leavingExam = false;
   bool _heartbeatInFlight = false;
+  final Map<String, int> _navigationAttempts = {};
 
   @override
   void initState() {
@@ -109,7 +110,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
     }
     if (state == AppLifecycleState.paused) {
       setState(() => _hasFocusWarning = true);
-      unawaited(_logEvent('app_backgrounded'));
+      unawaited(_logNavigationAttempt('home_navigation_attempt'));
     }
     if (state == AppLifecycleState.resumed) {
       unawaited(_logEvent('app_resumed'));
@@ -129,13 +130,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
       canPop: widget.reviewOnly,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          unawaited(_logEvent('back_blocked'));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Back navigation is disabled during the exam.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
+          unawaited(_logNavigationAttempt('back_navigation_attempt'));
         }
       },
       child: Scaffold(
@@ -387,11 +382,19 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
   Future<void> _enterExam() async {
     try {
       await _securityService.enterExamMode();
+      if (await _securityService.isInMultiWindowMode()) {
+        await _securityService.exitExamMode();
+        if (mounted) {
+          setState(() {
+            _errorMessage =
+                'Close split-screen or picture-in-picture mode before starting the test.';
+            _loading = false;
+          });
+        }
+        return;
+      }
       await _testService.startAttempt(widget.test.id);
       _startHeartbeat();
-      if (await _securityService.isInMultiWindowMode()) {
-        await _logEvent('split_screen_detected');
-      }
       final path = await _testService.downloadPdf(widget.test.id);
       await _testService.recordEvent(widget.test.id, 'pdf_opened');
       if (mounted) {
@@ -498,10 +501,17 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _logEvent(String eventType) async {
+  Future<void> _logNavigationAttempt(String eventType) {
+    final attempts = (_navigationAttempts[eventType] ?? 0) + 1;
+    _navigationAttempts[eventType] = attempts;
+    return _logEvent(eventType, metadata: {'navigationAttempts': attempts});
+  }
+
+  Future<void> _logEvent(String eventType,
+      {Map<String, dynamic>? metadata}) async {
     try {
       final locked = await _testService.recordEvent(widget.test.id, eventType,
-          metadata: _eventMetadata());
+          metadata: {..._eventMetadata(), ...?metadata});
       if (locked && mounted) {
         await _deleteLocalPdf();
         _heartbeatTimer?.cancel();
@@ -523,7 +533,7 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await _securityService.reassertExamMode();
       if (await _securityService.isInMultiWindowMode()) {
-        await _logEvent('split_screen_detected');
+        await _logNavigationAttempt('split_screen_attempt');
       } else {
         await _logEvent('exam_heartbeat');
       }

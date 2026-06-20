@@ -22,6 +22,7 @@ class AppUser {
     this.photoUrl,
     this.twoFactorEnabled,
     this.isPrimaryAdmin,
+    this.mustChangeCredentials = false,
   });
 
   final int id;
@@ -46,6 +47,7 @@ class AppUser {
   final String? photoUrl;
   final bool? twoFactorEnabled;
   final bool? isPrimaryAdmin;
+  final bool mustChangeCredentials;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
@@ -69,8 +71,12 @@ class AppUser {
       admissionYear: json['admission_year'] as int?,
       dropoutYear: json['dropout_year'] as int?,
       photoUrl: json['photo_url'] as String?,
-      twoFactorEnabled: json['two_factor_enabled'] == true || json['two_factor_enabled'] == 1,
-      isPrimaryAdmin: json['is_primary_admin'] == true || json['is_primary_admin'] == 1,
+      twoFactorEnabled:
+          json['two_factor_enabled'] == true || json['two_factor_enabled'] == 1,
+      isPrimaryAdmin:
+          json['is_primary_admin'] == true || json['is_primary_admin'] == 1,
+      mustChangeCredentials: json['must_change_credentials'] == true ||
+          json['must_change_credentials'] == 1,
     );
   }
 }

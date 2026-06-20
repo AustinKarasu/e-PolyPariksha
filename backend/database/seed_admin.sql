@@ -1,4 +1,4 @@
--- Optional first-admin seed for PostgreSQL/Supabase.
+-- Optional first-admin seed for PostgreSQL.
 -- Replace every value before running. Do not commit real password hashes.
 
 INSERT INTO users (full_name, email, password_hash, role, is_active, is_primary_admin)

@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/update_config.dart';
@@ -25,7 +28,8 @@ class AppUpdate {
   final bool mandatory;
 
   bool get usesPlayStore => playStoreUrl.isNotEmpty;
-  String get actionLabel => usesPlayStore ? 'Update on Play Store' : 'Download';
+  String get actionLabel =>
+      usesPlayStore ? 'Update on Play Store' : 'Install update';
   String get fallbackMessage => usesPlayStore
       ? 'A newer Play Store build is ready to install.'
       : 'A newer APK is ready to install.';
@@ -56,18 +60,42 @@ class UpdateService {
   Future<AppUpdate?> checkForUpdate() async {
     final packageInfo = await PackageInfo.fromPlatform();
     final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
-    final response = await http
-        .get(Uri.parse(UpdateConfig.manifestUrl))
-        .timeout(const Duration(seconds: 2));
-    if (response.statusCode >= 400) {
-      throw Exception('Unable to check for updates');
+    final update = await _fetchUpdateManifest();
+    if (update.latestBuild > 0) {
+      return update.latestBuild > currentBuild ? update : null;
     }
-    final update =
-        AppUpdate.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    return update.latestBuild > currentBuild ||
-            _isNewerVersion(update.latestVersion, packageInfo.version)
+    return _isNewerVersion(update.latestVersion, packageInfo.version)
         ? update
         : null;
+  }
+
+  Future<AppUpdate> _fetchUpdateManifest() async {
+    Object? lastError;
+    final urls = <String>{
+      UpdateConfig.manifestUrl,
+      UpdateConfig.fallbackManifestUrl,
+    }.where((url) => url.trim().isNotEmpty);
+
+    for (final url in urls) {
+      try {
+        final uri = Uri.parse(url).replace(queryParameters: {
+          ...Uri.parse(url).queryParameters,
+          't': DateTime.now().millisecondsSinceEpoch.toString(),
+        });
+        final response =
+            await http.get(uri).timeout(const Duration(seconds: 10));
+        if (response.statusCode >= 400) {
+          lastError = 'Update manifest returned ${response.statusCode}';
+          continue;
+        }
+        return AppUpdate.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>);
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    throw Exception('Unable to check for updates: $lastError');
   }
 
   Future<void> openUpdate(AppUpdate update) async {
@@ -86,10 +114,43 @@ class UpdateService {
     if (update.downloadUrl.isEmpty) {
       throw Exception('Update link is not available yet');
     }
-    final downloadUri = Uri.parse(update.downloadUrl);
-    if (!await launchUrl(downloadUri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Unable to open update link');
+    if (!Platform.isAndroid) {
+      final downloadUri = Uri.parse(update.downloadUrl);
+      if (!await launchUrl(downloadUri, mode: LaunchMode.externalApplication)) {
+        throw Exception('Unable to open update link');
+      }
+      return;
     }
+    final apk = await _downloadApk(update);
+    final result = await OpenFilex.open(
+      apk.path,
+      type: 'application/vnd.android.package-archive',
+    );
+    if (result.type != ResultType.done) {
+      throw Exception(result.message.isEmpty
+          ? 'Unable to start update installer'
+          : result.message);
+    }
+  }
+
+  Future<File> _downloadApk(AppUpdate update) async {
+    final uri = Uri.parse(update.downloadUrl);
+    final request = http.Request('GET', uri)..followRedirects = true;
+    final response = await request.send().timeout(const Duration(seconds: 20));
+    if (response.statusCode >= 400) {
+      throw Exception('Unable to download update');
+    }
+
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/epolypariksha-hp-update.apk');
+    final sink = file.openWrite();
+    try {
+      await response.stream.pipe(sink);
+    } catch (_) {
+      await sink.close();
+      rethrow;
+    }
+    return file;
   }
 
   bool _isNewerVersion(String latest, String current) {
