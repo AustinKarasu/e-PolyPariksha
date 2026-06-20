@@ -24,10 +24,11 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: env.rateLimit.authWindowMs,
-  limit: env.rateLimit.authMax,
+  limit: Math.max(env.rateLimit.authMax, 30),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.statusCode >= 500,
   keyGenerator: (req) => {
     const identity = normalizedBodyValue(req, 'identifier') || normalizedBodyValue(req, 'email') || 'anonymous';
     return [clientIp(req), req.method, req.baseUrl, req.path, identity].join(':');
@@ -37,10 +38,11 @@ const authLimiter = rateLimit({
 
 const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipFailedRequests: true,
+  requestWasSuccessful: (_req, res) => res.statusCode < 400,
   keyGenerator: (req) => {
     const email = normalizedBodyValue(req, 'email') || 'missing-email';
     const role = normalizedBodyValue(req, 'role') || 'missing-role';

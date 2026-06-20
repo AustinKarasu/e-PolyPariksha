@@ -46,6 +46,8 @@ async function sendOtp(email, purpose, subject = 'e-PolyPariksha HP verification
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) throw new ApiError(422, 'Email is required');
 
+  await clearExpiredSecurityLock(normalizedEmail, purpose);
+
   const state = await query(
     `INSERT INTO otp_security (email, purpose) VALUES ($1, $2)
      ON CONFLICT (email, purpose) DO UPDATE SET email = EXCLUDED.email
@@ -54,7 +56,7 @@ async function sendOtp(email, purpose, subject = 'e-PolyPariksha HP verification
   );
   const security = state[0];
   if (security.locked_until && new Date(security.locked_until) > new Date()) {
-    throw new ApiError(429, 'Too many OTP attempts. Try again in one hour.');
+    throw new ApiError(429, 'Too many incorrect OTP attempts. Try again in one hour.');
   }
   const sentRecently = await query(
     `SELECT COUNT(*)::INT AS count FROM email_otps
@@ -62,12 +64,7 @@ async function sendOtp(email, purpose, subject = 'e-PolyPariksha HP verification
     [normalizedEmail, purpose]
   );
   if (sentRecently[0].count >= OTP_MAX_SENDS) {
-    await query(
-      `UPDATE otp_security SET locked_until = CURRENT_TIMESTAMP + INTERVAL '1 hour'
-       WHERE email = $1 AND purpose = $2`,
-      [normalizedEmail, purpose]
-    );
-    throw new ApiError(429, `You can request an OTP only ${OTP_MAX_SENDS} times per hour. Try again in one hour.`);
+    throw new ApiError(429, `You can request an OTP only ${OTP_MAX_SENDS} times per hour. Wait before requesting another code.`);
   }
 
   const code = generateCode();
@@ -107,6 +104,7 @@ async function verifyOtp(email, purpose, code) {
   if (!normalizedEmail || !cleanCode) {
     throw new ApiError(422, 'Email OTP is required');
   }
+  await clearExpiredSecurityLock(normalizedEmail, purpose);
   const securityRows = await query(
     'SELECT * FROM otp_security WHERE email = $1 AND purpose = $2 LIMIT 1',
     [normalizedEmail, purpose]
@@ -127,7 +125,10 @@ async function verifyOtp(email, purpose, code) {
     [normalizedEmail, purpose]
   );
   const otp = rows[0];
-  if (!otp || otp.code_hash !== hashCode(normalizedEmail, purpose, cleanCode)) {
+  if (!otp) {
+    throw new ApiError(422, 'Invalid or expired email OTP');
+  }
+  if (otp.code_hash !== hashCode(normalizedEmail, purpose, cleanCode)) {
     const failures = await query(
       `INSERT INTO otp_security (email, purpose, failed_attempts, failed_window_started_at)
        VALUES ($1, $2, 1, CURRENT_TIMESTAMP)
@@ -151,6 +152,28 @@ async function verifyOtp(email, purpose, code) {
   }
   await query('UPDATE email_otps SET consumed_at = CURRENT_TIMESTAMP WHERE id = $1', [otp.id]);
   await query('DELETE FROM otp_security WHERE email = $1 AND purpose = $2', [normalizedEmail, purpose]);
+}
+
+async function clearExpiredSecurityLock(email, purpose) {
+  await query(
+    `UPDATE otp_security
+     SET locked_until = NULL,
+         failed_attempts = CASE
+           WHEN failed_window_started_at < CURRENT_TIMESTAMP - INTERVAL '1 hour' THEN 0
+           ELSE failed_attempts
+         END,
+         failed_window_started_at = CASE
+           WHEN failed_window_started_at < CURRENT_TIMESTAMP - INTERVAL '1 hour' THEN NULL
+           ELSE failed_window_started_at
+         END
+     WHERE email = $1
+       AND purpose = $2
+       AND (
+         locked_until <= CURRENT_TIMESTAMP
+         OR failed_window_started_at < CURRENT_TIMESTAMP - INTERVAL '1 hour'
+       )`,
+    [email, purpose]
+  );
 }
 
 module.exports = { sendOtp, verifyOtp };
