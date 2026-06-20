@@ -66,6 +66,7 @@ class AuthProvider extends ChangeNotifier {
     String? phone,
     String? guardianName,
     String? address,
+    String? emailOtpCode,
   }) async {
     user = await _authService.updateProfile(
       fullName: fullName,
@@ -73,9 +74,12 @@ class AuthProvider extends ChangeNotifier {
       phone: phone,
       guardianName: guardianName,
       address: address,
+      emailOtpCode: emailOtpCode,
     );
     notifyListeners();
   }
+
+  Future<void> requestEmailChangeOtp(String email) => _authService.requestEmailChangeOtp(email);
 
   Future<void> uploadProfilePhoto({
     String? imagePath,

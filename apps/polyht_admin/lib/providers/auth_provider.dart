@@ -119,10 +119,13 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     String? phone,
     String? address,
+    String? emailOtpCode,
   }) async {
-    user = await _authService.updateProfile(fullName: fullName, email: email, phone: phone, address: address);
+    user = await _authService.updateProfile(fullName: fullName, email: email, phone: phone, address: address, emailOtpCode: emailOtpCode);
     notifyListeners();
   }
+
+  Future<void> requestEmailChangeOtp(String email) => _authService.requestEmailChangeOtp(email);
 
   Future<void> uploadProfilePhoto({
     String? imagePath,

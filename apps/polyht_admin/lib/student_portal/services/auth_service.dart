@@ -57,6 +57,7 @@ class AuthService {
     String? phone,
     String? guardianName,
     String? address,
+    String? emailOtpCode,
   }) async {
     final data = await _apiClient.patch('/students/me', {
       if (fullName != null) 'fullName': fullName,
@@ -64,8 +65,13 @@ class AuthService {
       if (phone != null) 'phone': phone,
       if (guardianName != null) 'guardianName': guardianName,
       if (address != null) 'address': address,
+      if (emailOtpCode != null && emailOtpCode.isNotEmpty) 'emailOtpCode': emailOtpCode,
     });
     return AppUser.fromJson(data['student'] as Map<String, dynamic>);
+  }
+
+  Future<void> requestEmailChangeOtp(String email) async {
+    await _apiClient.post('/students/me/email-otp', {'email': email});
   }
 
   Future<AppUser> uploadProfilePhoto({

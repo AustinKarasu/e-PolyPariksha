@@ -2,6 +2,7 @@ const { query, transaction } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 const attemptService = require('./attempt.service');
 const storageService = require('./storage.service');
+const notificationService = require('./notification.service');
 
 async function createTest({ title, branchId, semester, scheduledStart, scheduledEnd, timeLimitMinutes, file, createdBy }) {
   if (!file) throw new ApiError(422, 'PDF file is required');
@@ -21,7 +22,9 @@ async function createTest({ title, branchId, semester, scheduledStart, scheduled
     ]
   );
 
-  return getTestById(rows[0].id);
+  const test = await getTestById(rows[0].id);
+  await notificationService.notifyTest(test, 'scheduled');
+  return test;
 }
 
 async function getTestById(id) {
@@ -160,7 +163,9 @@ async function endTestNow(id, adminId) {
     'UPDATE tests SET scheduled_end = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
     [id]
   );
-  return getTestById(id);
+  const ended = await getTestById(id);
+  await notificationService.notifyTest(ended, 'ended');
+  return ended;
 }
 
 async function replacePdf(id, file, adminId) {

@@ -3,6 +3,7 @@ const { query, transaction } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 const authService = require('./auth.service');
 const emailOtpService = require('./email-otp.service');
+const notificationService = require('./notification.service');
 
 const PRIMARY_ADMIN_EMAIL = 'aayankarasu@gmail.com';
 
@@ -38,8 +39,24 @@ async function requirePrimaryAdmin(adminId) {
   if (!rows[0].is_primary_admin) throw new ApiError(403, 'Only the primary admin can use this action');
 }
 
-async function createAdmin({ fullName, email, password }, actingAdminId) {
+async function requestCreateAdminOtp(actingAdminId) {
   await requirePrimaryAdmin(actingAdminId);
+  const rows = await query('SELECT email FROM users WHERE id = $1 LIMIT 1', [actingAdminId]);
+  if (!rows[0]?.email) throw new ApiError(422, 'Your admin account needs an email address');
+  await emailOtpService.sendOtp(rows[0].email, 'create_admin', 'e-PolyPariksha HP add admin verification code');
+  return { status: 'sent' };
+}
+
+async function notifyAppUpdate(version, actingAdminId) {
+  await requirePrimaryAdmin(actingAdminId);
+  return notificationService.notifyAppUpdate(version, actingAdminId);
+}
+
+async function createAdmin({ fullName, email, password, otpCode }, actingAdminId) {
+  await requirePrimaryAdmin(actingAdminId);
+  const acting = await query('SELECT email FROM users WHERE id = $1 LIMIT 1', [actingAdminId]);
+  if (!otpCode) throw new ApiError(428, 'Verify your email OTP before adding an admin');
+  await emailOtpService.verifyOtp(acting[0]?.email, 'create_admin', otpCode);
   const passwordHash = await bcrypt.hash(password, 12);
   try {
     const rows = await query(
@@ -172,8 +189,14 @@ async function updateAdmin(adminId, patch, actingAdminId) {
     if (existing.is_primary_admin && !actingAdmin.is_primary_admin) {
       throw new ApiError(403, 'Only the primary admin can change the primary admin email');
     }
+    const target = await query('SELECT email FROM users WHERE id = $1 LIMIT 1', [adminId]);
+    const nextEmail = String(patch.email || '').trim().toLowerCase();
+    if (nextEmail && nextEmail !== String(target[0]?.email || '').trim().toLowerCase()) {
+      if (!patch.emailOtpCode) throw new ApiError(428, 'Verify the new email address before saving it');
+      await emailOtpService.verifyOtp(nextEmail, 'email_change', patch.emailOtpCode);
+    }
     sets.push(`email = $${idx++}`);
-    params.push(patch.email || null);
+    params.push(nextEmail || null);
   }
   if (patch.password) {
     sets.push(`password_hash = $${idx++}`);
@@ -395,6 +418,8 @@ module.exports = {
   listAdmins,
   listApplications,
   createAdmin,
+  requestCreateAdminOtp,
+  notifyAppUpdate,
   approveApplication,
   rejectApplication,
   deleteApplication,

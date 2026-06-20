@@ -7,6 +7,7 @@ const { validate } = require('../middleware/validate.middleware');
 
 // Student self-service
 router.get('/me', authenticate, requireRole('student'), studentController.getProfile);
+router.post('/me/email-otp', authenticate, requireRole('student'), [body('email').isEmail().normalizeEmail()], validate, studentController.requestEmailChangeOtp);
 router.patch(
   '/me',
   authenticate,
@@ -15,7 +16,8 @@ router.patch(
     body('phone').optional().trim().isLength({ max: 20 }),
     body('address').optional().trim().isLength({ max: 500 }),
     body('guardianName').optional().trim().isLength({ max: 120 }),
-    body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail()
+    body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(),
+    body('emailOtpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   studentController.updateProfile

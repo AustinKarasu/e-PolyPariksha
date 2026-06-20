@@ -389,6 +389,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    final otpController = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -429,6 +430,26 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                       ? 'Minimum 10 characters'
                       : null,
                 ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Your email OTP',
+                    prefixIcon: const Icon(Icons.verified_user_outlined),
+                    suffixIcon: IconButton(
+                      tooltip: 'Send OTP',
+                      icon: const Icon(Icons.send_outlined),
+                      onPressed: () async {
+                        await _service.requestCreateAdminOtp();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your email')));
+                        }
+                      },
+                    ),
+                  ),
+                  validator: (value) => value == null || value.trim().length != 6 ? 'Enter the 6-digit OTP' : null,
+                ),
               ],
             ),
           ),
@@ -444,6 +465,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                 fullName: nameController.text.trim(),
                 email: emailController.text.trim(),
                 password: passwordController.text,
+                otpCode: otpController.text.trim(),
               );
               if (context.mounted) Navigator.of(context).pop();
               _refresh();
@@ -456,6 +478,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    otpController.dispose();
   }
 
   Future<void> _showClearDataDialog() async {

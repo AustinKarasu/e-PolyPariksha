@@ -42,6 +42,14 @@ async function requestAdminRegistrationOtp(req, res, next) {
   }
 }
 
+async function requestEmailChangeOtp(req, res, next) {
+  try {
+    res.json(await authService.requestEmailChangeOtp(req.user.sub, req.body.email));
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateMe(req, res, next) {
   try {
     const user = await authService.updateCurrentUser(req.user.sub, req.body);
@@ -112,6 +120,7 @@ async function logout(req, res, next) {
 module.exports = {
   login,
   requestAdminRegistrationOtp,
+  requestEmailChangeOtp,
   registerAdmin,
   me,
   updateMe,

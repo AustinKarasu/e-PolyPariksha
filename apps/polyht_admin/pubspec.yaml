@@ -1,7 +1,7 @@
 name: polyht_admin
 description: e-PolyPariksha HP combined admin and student app.
 publish_to: "none"
-version: 1.0.4+59
+version: 1.0.5+60
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

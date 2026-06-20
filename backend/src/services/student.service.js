@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 const storageService = require('./storage.service');
+const emailOtpService = require('./email-otp.service');
 
 const STUDENT_SELECT = `
   SELECT u.id, u.full_name, u.email, u.college_id, u.role, u.branch_id,
@@ -26,6 +27,15 @@ async function getStudentProfile(userId) {
 }
 
 async function updateStudentProfile(userId, patch) {
+  const existingRows = await query('SELECT email FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1', [userId, 'student']);
+  const existing = existingRows[0];
+  if (!existing) throw new ApiError(401, 'Student account is inactive or no longer exists');
+  const nextEmail = String(patch.email || '').trim().toLowerCase();
+  if (patch.email !== undefined && nextEmail && nextEmail !== String(existing.email || '').trim().toLowerCase()) {
+    if (!patch.emailOtpCode) throw new ApiError(428, 'Verify the new email address before saving it');
+    await emailOtpService.verifyOtp(nextEmail, 'email_change', patch.emailOtpCode);
+    patch.email = nextEmail;
+  }
   const allowed = ['email', 'phone', 'address', 'guardian_name'];
   const sets = [];
   const params = [];
@@ -43,6 +53,16 @@ async function updateStudentProfile(userId, patch) {
   params.push(userId);
   await query(`UPDATE users SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`, params);
   return getStudentProfile(userId);
+}
+
+async function requestStudentEmailChangeOtp(userId, email) {
+  const requested = String(email || '').trim().toLowerCase();
+  if (!requested) throw new ApiError(422, 'A new email address is required');
+  const rows = await query('SELECT email FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1', [userId, 'student']);
+  if (!rows[0]) throw new ApiError(401, 'Student account is inactive or no longer exists');
+  if (requested === String(rows[0].email || '').trim().toLowerCase()) throw new ApiError(422, 'Enter a different email address');
+  await emailOtpService.sendOtp(requested, 'email_change', 'e-PolyPariksha HP email change verification code');
+  return { status: 'sent' };
 }
 
 async function updateStudentPhoto(userId, file) {
@@ -242,6 +262,7 @@ async function adminDeleteStudent(studentId, actingAdminId) {
 module.exports = {
   getStudentProfile,
   updateStudentProfile,
+  requestStudentEmailChangeOtp,
   updateStudentPhoto,
   adminUpdateStudentPhoto,
   listAllStudents,

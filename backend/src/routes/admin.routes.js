@@ -8,6 +8,8 @@ router.use(authenticate, requireRole('admin'));
 
 router.get('/', adminController.listAdmins);
 router.get('/applications', adminController.listApplications);
+router.post('/request-create-otp', adminController.requestCreateAdminOtp);
+router.post('/app-update', [body('version').trim().isLength({ min: 1, max: 40 })], validate, adminController.notifyAppUpdate);
 router.post('/applications/:id/approve', adminController.approveApplication);
 router.post('/applications/:id/reject', adminController.rejectApplication);
 router.delete('/applications/:id', adminController.deleteApplication);
@@ -22,7 +24,8 @@ router.post(
       minUppercase: 1,
       minNumbers: 1,
       minSymbols: 1
-    })
+    }),
+    body('otpCode').trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   adminController.createAdmin
@@ -40,6 +43,7 @@ router.patch(
       minSymbols: 1
     }),
     body('isActive').optional().isBoolean()
+    ,body('emailOtpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   adminController.updateAdmin

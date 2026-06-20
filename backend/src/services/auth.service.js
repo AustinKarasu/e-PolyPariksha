@@ -9,7 +9,8 @@ const emailOtpService = require('./email-otp.service');
 
 const OTP_PURPOSES = {
   adminLogin: 'admin_login',
-  adminRegister: 'admin_register'
+  adminRegister: 'admin_register',
+  emailChange: 'email_change'
 };
 
 async function login(identifier, password, context = {}) {
@@ -163,6 +164,14 @@ async function getCurrentUser(userId) {
 }
 
 async function updateCurrentUser(userId, patch) {
+  const current = await query('SELECT email FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (!current[0]) throw new ApiError(401, 'User account is inactive or no longer exists');
+  const requestedEmail = patch.email === undefined ? undefined : normalizeEmail(patch.email);
+  if (requestedEmail && requestedEmail !== normalizeEmail(current[0].email)) {
+    if (!patch.emailOtpCode) throw new ApiError(428, 'Verify the new email address before saving it');
+    await emailOtpService.verifyOtp(requestedEmail, OTP_PURPOSES.emailChange, patch.emailOtpCode);
+    patch.email = requestedEmail;
+  }
   const allowed = ['full_name', 'email', 'phone', 'address', 'guardian_name'];
   const sets = [];
   const params = [];
@@ -183,6 +192,16 @@ async function updateCurrentUser(userId, patch) {
     throw err;
   }
   return getCurrentUser(userId);
+}
+
+async function requestEmailChangeOtp(userId, email) {
+  const requestedEmail = normalizeEmail(email);
+  if (!requestedEmail) throw new ApiError(422, 'A new email address is required');
+  const rows = await query('SELECT email FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (!rows[0]) throw new ApiError(401, 'User account is inactive or no longer exists');
+  if (requestedEmail === normalizeEmail(rows[0].email)) throw new ApiError(422, 'Enter a different email address');
+  await emailOtpService.sendOtp(requestedEmail, OTP_PURPOSES.emailChange, 'e-PolyPariksha HP email change verification code');
+  return { status: 'sent' };
 }
 
 async function updateCurrentUserPhoto(userId, file) {
@@ -324,6 +343,7 @@ async function clearLoginFailures(identifier, ipAddress = '') {
 module.exports = {
   login,
   requestAdminRegistrationOtp,
+  requestEmailChangeOtp,
   registerAdmin,
   getCurrentUser,
   updateCurrentUser,

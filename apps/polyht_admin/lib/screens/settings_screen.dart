@@ -84,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final email = TextEditingController(text: user.email ?? '');
     final phone = TextEditingController(text: user.phone ?? '');
     final address = TextEditingController(text: user.address ?? '');
+    final emailOtp = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -93,6 +94,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextField(controller: name, decoration: const InputDecoration(labelText: 'Full name')),
             const SizedBox(height: 12),
             TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailOtp,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Email OTP (required only when changing email)',
+                suffixIcon: IconButton(
+                  tooltip: 'Send email OTP',
+                  icon: const Icon(Icons.send_outlined),
+                  onPressed: () async {
+                    await auth.requestEmailChangeOtp(email.text.trim());
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification code sent to the new email')));
+                  },
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')),
             const SizedBox(height: 12),
@@ -106,12 +123,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (ok == true) {
-      await auth.updateProfile(fullName: name.text.trim(), email: email.text.trim(), phone: phone.text.trim(), address: address.text.trim());
+      await auth.updateProfile(fullName: name.text.trim(), email: email.text.trim(), phone: phone.text.trim(), address: address.text.trim(), emailOtpCode: emailOtp.text.trim());
     }
     name.dispose();
     email.dispose();
     phone.dispose();
     address.dispose();
+    emailOtp.dispose();
   }
 
   Future<void> _enable2fa(AuthProvider auth) async {

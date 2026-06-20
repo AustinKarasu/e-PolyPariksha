@@ -183,6 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final phoneController = TextEditingController(text: user.phone ?? '');
     final guardianController = TextEditingController(text: user.guardianName ?? '');
     final addressController = TextEditingController(text: user.address ?? '');
+    final emailOtpController = TextEditingController();
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -201,6 +202,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text('Edit Personal Details', style: Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height: 16),
             TextField(controller: emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailOtpController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Email OTP (when changing email)',
+                suffixIcon: IconButton(
+                  tooltip: 'Send email OTP',
+                  icon: const Icon(Icons.send_outlined),
+                  onPressed: () async {
+                    await context.read<AuthProvider>().requestEmailChangeOtp(emailController.text.trim());
+                    if (sheetContext.mounted) ScaffoldMessenger.of(sheetContext).showSnackBar(const SnackBar(content: Text('Verification code sent to the new email')));
+                  },
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
             const SizedBox(height: 12),
@@ -225,6 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         phone: phoneController.text.trim(),
         guardianName: guardianController.text.trim(),
         address: addressController.text.trim(),
+        emailOtpCode: emailOtpController.text.trim(),
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
@@ -238,6 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       phoneController.dispose();
       guardianController.dispose();
       addressController.dispose();
+      emailOtpController.dispose();
       if (mounted) setState(() => _saving = false);
     }
   }

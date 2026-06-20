@@ -53,6 +53,7 @@ router.post(
 );
 
 router.get('/me', authenticate, authController.me);
+router.post('/me/email-otp', authenticate, [body('email').isEmail().normalizeEmail()], validate, authController.requestEmailChangeOtp);
 router.patch(
   '/me',
   authenticate,
@@ -62,6 +63,7 @@ router.patch(
     body('phone').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }),
     body('address').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }),
     body('guardianName').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 120 })
+    ,body('emailOtpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   authController.updateMe

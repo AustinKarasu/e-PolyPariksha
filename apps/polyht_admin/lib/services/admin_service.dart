@@ -63,12 +63,18 @@ class AdminService {
     required String fullName,
     required String email,
     required String password,
+    String? otpCode,
   }) async {
     await _apiClient.post('/admins', {
       'fullName': fullName,
       'email': email,
       'password': password,
+      if (otpCode != null && otpCode.isNotEmpty) 'otpCode': otpCode,
     });
+  }
+
+  Future<void> requestCreateAdminOtp() async {
+    await _apiClient.post('/admins/request-create-otp', {});
   }
 
   Future<void> setActive(int adminId, bool isActive) async {

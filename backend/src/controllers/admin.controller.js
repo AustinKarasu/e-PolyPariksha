@@ -27,6 +27,22 @@ async function createAdmin(req, res, next) {
   }
 }
 
+async function requestCreateAdminOtp(req, res, next) {
+  try {
+    res.json(await adminService.requestCreateAdminOtp(req.user.sub));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function notifyAppUpdate(req, res, next) {
+  try {
+    res.json(await adminService.notifyAppUpdate(req.body.version, req.user.sub));
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function approveApplication(req, res, next) {
   try {
     const admin = await adminService.approveApplication(Number(req.params.id), req.user.sub);
@@ -107,6 +123,8 @@ module.exports = {
   listAdmins,
   listApplications,
   createAdmin,
+  requestCreateAdminOtp,
+  notifyAppUpdate,
   approveApplication,
   rejectApplication,
   deleteApplication,
