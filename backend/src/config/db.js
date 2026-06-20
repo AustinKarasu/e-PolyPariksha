@@ -75,6 +75,7 @@ async function ensureRuntimeSchema() {
         ADD COLUMN IF NOT EXISTS state_name VARCHAR(80),
         ADD COLUMN IF NOT EXISTS dropout_year INT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS biometric_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_credentials BOOLEAN NOT NULL DEFAULT FALSE;
 
       CREATE TABLE IF NOT EXISTS admin_applications (
         id SERIAL PRIMARY KEY,

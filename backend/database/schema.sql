@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
   two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   two_factor_secret VARCHAR(160),
   biometric_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  must_change_credentials BOOLEAN NOT NULL DEFAULT FALSE,
   is_primary_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

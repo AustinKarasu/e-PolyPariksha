@@ -12,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   AppUser? user;
   bool isLoading = true;
   bool requiresTwoFactor = false;
+  bool requiresCredentialSetup = false;
   String? error;
 
   bool get isAuthenticated => user != null;
@@ -53,6 +54,9 @@ class AuthProvider extends ChangeNotifier {
     } on TwoFactorRequiredException catch (err) {
       requiresTwoFactor = true;
       error = err.toString();
+    } on CredentialSetupRequiredException {
+      requiresCredentialSetup = true;
+      user = await _authService.me();
     } catch (err) {
       error = err.toString();
     } finally {
@@ -90,6 +94,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> requestEmailChangeOtp(String email) =>
       _authService.requestEmailChangeOtp(email);
+  Future<void> requestInitialCredentialsOtp(String email) => _authService.requestInitialCredentialsOtp(email);
+  Future<void> completeInitialCredentials(String email, String otp, String password) async { user = await _authService.completeInitialCredentials(email, otp, password); requiresCredentialSetup = false; notifyListeners(); }
   Future<void> requestPasswordReset(String email, String role) =>
       _authService.requestPasswordReset(email, role);
   Future<String> verifyPasswordReset(

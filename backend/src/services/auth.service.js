@@ -28,7 +28,7 @@ async function login(identifier, password, context = {}) {
             u.branch_id, u.is_active, u.dob, u.semester, u.roll_no, u.board_roll_no,
             u.college_name, u.course_name, u.guardian_name, u.phone, u.address,
             u.admission_year, u.photo_url, u.two_factor_enabled, u.two_factor_secret,
-            u.is_primary_admin,
+            u.is_primary_admin, u.must_change_credentials,
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
@@ -67,9 +67,10 @@ async function login(identifier, password, context = {}) {
     }
   }
 
+  const requiresCredentialSetup = user.role === 'student' && user.must_change_credentials === true;
   const jti = crypto.randomUUID();
   const token = jwt.sign(
-    { sub: user.id, role: user.role, branchId: user.branch_id, semester: user.semester, jti },
+    { sub: user.id, role: user.role, branchId: user.branch_id, semester: user.semester, jti, mustChangeCredentials: requiresCredentialSetup },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn, algorithm: 'HS256', issuer: env.jwtIssuer, audience: env.jwtAudience }
   );
@@ -82,7 +83,25 @@ async function login(identifier, password, context = {}) {
   );
   await clearLoginFailures(identifier, context.ipAddress);
 
-  return { token, user: sanitizeUser(user) };
+  return { token, user: sanitizeUser(user), requiresCredentialSetup };
+}
+
+async function requestInitialCredentialsOtp(userId, email) {
+  const requestedEmail = normalizeEmail(email);
+  const rows = await query('SELECT role, must_change_credentials FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (rows[0]?.role !== 'student' || !rows[0].must_change_credentials) throw new ApiError(403, 'Initial credential setup is not required');
+  await emailOtpService.sendOtp(requestedEmail, 'initial_credentials', 'Verify your new e-PolyPariksha HP email');
+  return { status: 'sent' };
+}
+
+async function completeInitialCredentials(userId, { email, emailOtpCode, newPassword }) {
+  const requestedEmail = normalizeEmail(email);
+  const rows = await query('SELECT role, must_change_credentials FROM users WHERE id = $1 AND is_active = true LIMIT 1', [userId]);
+  if (rows[0]?.role !== 'student' || !rows[0].must_change_credentials) throw new ApiError(403, 'Initial credential setup is not required');
+  await emailOtpService.verifyOtp(requestedEmail, 'initial_credentials', emailOtpCode);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await query('UPDATE users SET email = $1, password_hash = $2, must_change_credentials = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $3', [requestedEmail, passwordHash, userId]);
+  return getCurrentUser(userId);
 }
 
 async function registerAdmin(payload) {
@@ -443,6 +462,8 @@ module.exports = {
   login,
   requestAdminRegistrationOtp,
   requestEmailChangeOtp,
+  requestInitialCredentialsOtp,
+  completeInitialCredentials,
   requestPasswordChangeOtp,
   requestPasswordReset,
   verifyPasswordReset,

@@ -78,6 +78,8 @@ router.post(
 
 router.get('/me', authenticate, authController.me);
 router.post('/me/email-otp', authenticate, [body('email').isEmail().normalizeEmail()], validate, authController.requestEmailChangeOtp);
+router.post('/me/initial-credentials/otp', authenticate, [body('email').isEmail().normalizeEmail()], validate, authController.requestInitialCredentialsOtp);
+router.post('/me/initial-credentials', authenticate, [body('email').isEmail().normalizeEmail(), body('emailOtpCode').trim().isLength({ min: 6, max: 8 }), body('newPassword').isStrongPassword({ minLength: 10, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })], validate, authController.completeInitialCredentials);
 router.post('/me/password-otp', authenticate, authController.requestPasswordChangeOtp);
 router.patch(
   '/me',

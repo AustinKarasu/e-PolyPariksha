@@ -162,16 +162,16 @@ async function adminCreateStudent(payload, actingAdminId) {
   if (!Number.isInteger(semester) || semester < 1 || semester > 6) {
     throw new ApiError(422, 'Semester must be from 1 to 6');
   }
-  if (!payload.password) throw new ApiError(422, 'A strong initial password is required');
-  const passwordHash = await bcrypt.hash(payload.password, 12);
+  const dobPassword = `${String(payload.dob).slice(8, 10)}${String(payload.dob).slice(5, 7)}${String(payload.dob).slice(0, 4)}`;
+  const passwordHash = await bcrypt.hash(payload.password || dobPassword, 12);
   try {
     const rows = await query(
       `INSERT INTO users (
         full_name, email, college_id, password_hash, role, branch_id,
         dob, semester, roll_no, board_roll_no, college_name, course_name,
-        guardian_name, phone, address, admission_year, dropout_year, created_by_admin_id, is_active
+        guardian_name, phone, address, admission_year, dropout_year, created_by_admin_id, is_active, must_change_credentials
       )
-      VALUES ($1, $2, $3, $4, 'student', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE)
+      VALUES ($1, $2, $3, $4, 'student', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE, $18)
       RETURNING id`,
       [
         payload.fullName,
@@ -190,7 +190,8 @@ async function adminCreateStudent(payload, actingAdminId) {
         payload.address,
         payload.admissionYear,
         payload.dropoutYear,
-        actingAdminId
+        actingAdminId,
+        !payload.password
       ]
     );
     return getStudentById(rows[0].id, actingAdminId);

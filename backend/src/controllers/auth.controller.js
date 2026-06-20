@@ -49,6 +49,8 @@ async function requestEmailChangeOtp(req, res, next) {
     next(err);
   }
 }
+async function requestInitialCredentialsOtp(req, res, next) { try { res.json(await authService.requestInitialCredentialsOtp(req.user.sub, req.body.email)); } catch (err) { next(err); } }
+async function completeInitialCredentials(req, res, next) { try { res.json({ user: await authService.completeInitialCredentials(req.user.sub, req.body) }); } catch (err) { next(err); } }
 
 async function requestPasswordChangeOtp(req, res, next) {
   try { res.json(await authService.requestPasswordChangeOtp(req.user.sub)); } catch (err) { next(err); }
@@ -141,6 +143,8 @@ module.exports = {
   login,
   requestAdminRegistrationOtp,
   requestEmailChangeOtp,
+  requestInitialCredentialsOtp,
+  completeInitialCredentials,
   requestPasswordChangeOtp,
   requestPasswordReset,
   verifyPasswordReset,

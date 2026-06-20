@@ -323,8 +323,23 @@ class _LoginScreenState extends State<LoginScreen>
         _totpController.clear();
       });
     } else if (mounted && auth.isAuthenticated) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (auth.requiresCredentialSetup) { _showInitialCredentials(context); } else { Navigator.of(context).popUntil((route) => route.isFirst); }
     }
+  }
+
+  void _showInitialCredentials(BuildContext context) {
+    final email = TextEditingController(text: context.read<AuthProvider>().user?.email ?? '');
+    final otp = TextEditingController(); final password = TextEditingController();
+    showDialog(context: context, barrierDismissible: false, builder: (dialogContext) => AlertDialog(
+      title: const Text('Secure your student account'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('Confirm your current or new email with an OTP, then choose a strong password.'),
+        TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: 'Email', suffixIcon: IconButton(icon: const Icon(Icons.send), onPressed: () async { await context.read<AuthProvider>().requestInitialCredentialsOtp(email.text.trim()); if (dialogContext.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to this email'))); }))),
+        TextField(controller: otp, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Email OTP')),
+        TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+      ]),
+      actions: [FilledButton(onPressed: () async { try { await context.read<AuthProvider>().completeInitialCredentials(email.text.trim(), otp.text.trim(), password.text); if (dialogContext.mounted) { Navigator.pop(dialogContext); Navigator.of(context).popUntil((route) => route.isFirst); } } catch (e) { if (dialogContext.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } }, child: const Text('Save and continue'))],
+    ));
   }
 
   void _showForgotPassword(BuildContext context) {
