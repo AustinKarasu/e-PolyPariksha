@@ -34,7 +34,7 @@ class AppDrawer extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset('assets/images/e-PolyPariksha HP_logo.png', width: 52, height: 52, fit: BoxFit.cover),
+                      child: Image.asset('assets/images/polyht_logo.png', width: 52, height: 52, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

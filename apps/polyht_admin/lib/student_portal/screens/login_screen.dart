@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          child: Image.asset('assets/images/e-PolyPariksha HP_logo.png', fit: BoxFit.cover),
+                          child: Image.asset('assets/images/polyht_logo.png', fit: BoxFit.cover),
                         ),
                       ),
                       const SizedBox(height: 20),

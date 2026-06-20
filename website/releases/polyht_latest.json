@@ -1,6 +1,6 @@
 {
     "appId":  "epolypariksha-hp",
-    "latestVersion":  "1.0",
+    "latestVersion":  "1.0.0",
     "latestBuild":  55,
     "mandatory":  true,
     "releaseNotes":  "e-PolyPariksha HP helps Polytechnic colleges run tests in one simple app.\n\nHow to download:\n- Open this release and download the APK file.\n- Install it on your Android phone. If Android asks, allow installation from your browser or file manager.\n- Open e-PolyPariksha HP after installation.\n\nFor admins:\n- Sign in with your approved admin account.\n- Add student records, prepare test papers, schedule tests.\n- Keep student details correct before starting a test so the right students can see the right paper.\n\nFor students:\n- Sign in with the details given by your college.\n- Open the student area, check available tests, and start the scheduled test at the correct time.\n- Stay inside the test screen until you finish and submit your attempt.\n\nHow it works:\n- Admins create and schedule tests.\n- Students see only the tests assigned to them.",

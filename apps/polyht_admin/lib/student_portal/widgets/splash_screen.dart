@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Image.asset('assets/images/e-PolyPariksha HP_logo.png', width: 96, height: 96, fit: BoxFit.cover),
+                    child: Image.asset('assets/images/polyht_logo.png', width: 96, height: 96, fit: BoxFit.cover),
                   ),
                   const SizedBox(height: 20),
                   const Text('e-PolyPariksha HP', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 2)),

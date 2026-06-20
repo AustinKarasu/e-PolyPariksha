@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: "Release version name, for example 1.0"
+        description: "Release version name, for example 1.0.0"
         required: true
-        default: "1.0"
+        default: "1.0.0"
       buildNumber:
         description: "Android build number, must increase every release"
         required: true

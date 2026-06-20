@@ -58,7 +58,7 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
-                        child: Image.asset('assets/images/e-PolyPariksha HP_logo.png', fit: BoxFit.cover),
+                        child: Image.asset('assets/images/polyht_logo.png', fit: BoxFit.cover),
                       ),
                     ),
                     const SizedBox(height: 20),

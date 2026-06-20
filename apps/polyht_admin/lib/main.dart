@@ -13,11 +13,11 @@ import 'widgets/update_gate.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.init();
-  runApp(const e-PolyPariksha HPAdminApp());
+  runApp(const PolyHtAdminApp());
 }
 
-class e-PolyPariksha HPAdminApp extends StatelessWidget {
-  const e-PolyPariksha HPAdminApp({super.key});
+class PolyHtAdminApp extends StatelessWidget {
+  const PolyHtAdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {
