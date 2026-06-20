@@ -111,6 +111,16 @@ async function ensureRuntimeSchema() {
       CREATE INDEX IF NOT EXISTS idx_email_otps_lookup
         ON email_otps (email, purpose, expires_at);
 
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token_nonce UUID PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user
+        ON password_reset_tokens (user_id, expires_at);
+
       CREATE TABLE IF NOT EXISTS otp_security (
         email VARCHAR(160) NOT NULL,
         purpose VARCHAR(40) NOT NULL,

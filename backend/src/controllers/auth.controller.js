@@ -54,6 +54,21 @@ async function requestPasswordChangeOtp(req, res, next) {
   try { res.json(await authService.requestPasswordChangeOtp(req.user.sub)); } catch (err) { next(err); }
 }
 
+async function requestPasswordReset(req, res, next) {
+  try { res.json(await authService.requestPasswordReset(req.body.email, req.body.role)); } catch (err) { next(err); }
+}
+
+async function verifyPasswordReset(req, res, next) {
+  try { res.json(await authService.verifyPasswordReset(req.body.email, req.body.role, req.body.otpCode)); } catch (err) { next(err); }
+}
+
+async function completePasswordReset(req, res, next) {
+  try {
+    await authService.completePasswordReset(req.body.resetToken, req.body.newPassword);
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
 async function updateMe(req, res, next) {
   try {
     const user = await authService.updateCurrentUser(req.user.sub, req.body);
@@ -127,6 +142,9 @@ module.exports = {
   requestAdminRegistrationOtp,
   requestEmailChangeOtp,
   requestPasswordChangeOtp,
+  requestPasswordReset,
+  verifyPasswordReset,
+  completePasswordReset,
   registerAdmin,
   me,
   updateMe,

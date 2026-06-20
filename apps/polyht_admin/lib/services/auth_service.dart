@@ -3,7 +3,8 @@ import 'api_client.dart';
 import 'token_storage.dart';
 
 class VerificationRequiredException implements Exception {
-  const VerificationRequiredException([this.message = 'Enter your verification code to continue.']);
+  const VerificationRequiredException(
+      [this.message = 'Enter your verification code to continue.']);
 
   final String message;
 
@@ -19,17 +20,17 @@ class AuthService {
   final ApiClient _apiClient;
   final TokenStorage _tokenStorage;
 
-  Future<AppUser> login(String identifier, String password, {String? totpCode}) async {
+  Future<AppUser> login(String identifier, String password,
+      {String? emailOtpCode}) async {
     final data = await _apiClient.post('/auth/login', {
       'identifier': identifier,
       'password': password,
-      if (totpCode != null && totpCode.isNotEmpty) ...{
-        'totpCode': totpCode,
-        'emailOtpCode': totpCode,
-      },
+      if (emailOtpCode != null && emailOtpCode.isNotEmpty)
+        'emailOtpCode': emailOtpCode,
     });
     if (data['requiresTwoFactor'] == true || data['requiresEmailOtp'] == true) {
-      throw VerificationRequiredException(data['message']?.toString() ?? 'Enter your verification code to continue.');
+      throw VerificationRequiredException(data['message']?.toString() ??
+          'Enter your verification code to continue.');
     }
     final user = AppUser.fromJson(data['user'] as Map<String, dynamic>);
     if (user.role != 'admin') {
@@ -67,7 +68,8 @@ class AuthService {
   }) async {
     await _apiClient.post('/auth/register-admin', {
       'firstName': firstName,
-      if (middleName != null && middleName.trim().isNotEmpty) 'middleName': middleName.trim(),
+      if (middleName != null && middleName.trim().isNotEmpty)
+        'middleName': middleName.trim(),
       'lastName': lastName,
       'mobile': mobile,
       'email': email,
@@ -94,7 +96,8 @@ class AuthService {
       if (email != null) 'email': email,
       if (phone != null) 'phone': phone,
       if (address != null) 'address': address,
-      if (emailOtpCode != null && emailOtpCode.isNotEmpty) 'emailOtpCode': emailOtpCode,
+      if (emailOtpCode != null && emailOtpCode.isNotEmpty)
+        'emailOtpCode': emailOtpCode,
     });
     return AppUser.fromJson(data['user'] as Map<String, dynamic>);
   }
@@ -103,10 +106,33 @@ class AuthService {
     await _apiClient.post('/auth/me/email-otp', {'email': email});
   }
 
-  Future<void> requestPasswordChangeOtp() => _apiClient.post('/auth/me/password-otp', {});
+  Future<void> requestPasswordReset(String email, String role) => _apiClient
+      .post('/auth/password-reset/request', {'email': email, 'role': role});
+  Future<String> verifyPasswordReset(
+      String email, String role, String otpCode) async {
+    final data = await _apiClient.post('/auth/password-reset/verify',
+        {'email': email, 'role': role, 'otpCode': otpCode});
+    return data['resetToken'] as String;
+  }
 
-  Future<void> changePassword({required String currentPassword, required String newPassword, required String emailOtpCode, String? totpCode}) async {
-    await _apiClient.post('/auth/me/password', {'currentPassword': currentPassword, 'newPassword': newPassword, 'emailOtpCode': emailOtpCode, if (totpCode != null && totpCode.isNotEmpty) 'totpCode': totpCode});
+  Future<void> completePasswordReset(String resetToken, String newPassword) =>
+      _apiClient.post('/auth/password-reset/complete',
+          {'resetToken': resetToken, 'newPassword': newPassword});
+
+  Future<void> requestPasswordChangeOtp() =>
+      _apiClient.post('/auth/me/password-otp', {});
+
+  Future<void> changePassword(
+      {required String currentPassword,
+      required String newPassword,
+      required String emailOtpCode,
+      String? totpCode}) async {
+    await _apiClient.post('/auth/me/password', {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+      'emailOtpCode': emailOtpCode,
+      if (totpCode != null && totpCode.isNotEmpty) 'totpCode': totpCode
+    });
   }
 
   Future<AppUser> uploadProfilePhoto({

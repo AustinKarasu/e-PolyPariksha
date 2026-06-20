@@ -78,8 +78,23 @@ async function sendOtp(email, purpose, subject = 'e-PolyPariksha HP verification
     from: env.smtp.from,
     to: normalizedEmail,
     subject,
-    text: `Your e-PolyPariksha HP verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes. Do not share this code.`
+    text: `Your e-PolyPariksha HP verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes. Do not share this code.`,
+    html: otpEmailHtml(code, subject)
   });
+}
+
+function otpEmailHtml(code, subject) {
+  const title = String(subject).replace(/^e-PolyPariksha HP\s*/i, '').trim() || 'Verification code';
+  return `<!doctype html><html><body style="margin:0;background:#eef3f8;font-family:Arial,sans-serif;color:#1e293b">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border:1px solid #dce5f0;border-radius:12px;overflow:hidden">
+        <tr><td style="padding:24px 28px;background:#103b72;color:#fff"><div style="font-size:21px;font-weight:700">e-PolyPariksha HP</div><div style="font-size:13px;margin-top:4px;color:#dbeafe">Account security</div></td></tr>
+        <tr><td style="padding:30px 28px"><h1 style="margin:0 0 12px;font-size:22px;color:#0f172a">${title}</h1><p style="margin:0;color:#475569;font-size:15px;line-height:1.55">Use the secure verification code below to continue. It expires in ${OTP_TTL_MINUTES} minutes.</p>
+          <div style="margin:24px 0;padding:17px;text-align:center;background:#f1f5f9;border:1px solid #dce5f0;border-radius:8px;font-size:30px;letter-spacing:8px;font-weight:700;color:#103b72">${code}</div>
+          <p style="margin:0;color:#64748b;font-size:13px;line-height:1.55">For your security, never share this code with anyone. If you did not request it, you can safely ignore this email.</p></td></tr>
+        <tr><td style="padding:16px 28px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">e-PolyPariksha HP &middot; Government Polytechnic Kangra</td></tr>
+      </table>
+    </td></tr></table></body></html>`;
 }
 
 async function verifyOtp(email, purpose, code) {

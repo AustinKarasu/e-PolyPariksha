@@ -3,7 +3,8 @@ import 'api_client.dart';
 import 'token_storage.dart';
 
 class TwoFactorRequiredException implements Exception {
-  const TwoFactorRequiredException([this.message = 'Enter your authenticator code to continue.']);
+  const TwoFactorRequiredException(
+      [this.message = 'Enter your authenticator code to continue.']);
 
   final String message;
 
@@ -19,14 +20,16 @@ class AuthService {
   final ApiClient _apiClient;
   final TokenStorage _tokenStorage;
 
-  Future<AppUser> login(String identifier, String password, {String? totpCode}) async {
+  Future<AppUser> login(String identifier, String password,
+      {String? totpCode}) async {
     final data = await _apiClient.post('/auth/login', {
       'identifier': identifier,
       'password': password,
       if (totpCode != null && totpCode.isNotEmpty) 'totpCode': totpCode,
     });
     if (data['requiresTwoFactor'] == true) {
-      throw TwoFactorRequiredException(data['message']?.toString() ?? 'Enter your authenticator code to continue.');
+      throw TwoFactorRequiredException(data['message']?.toString() ??
+          'Enter your authenticator code to continue.');
     }
     final user = AppUser.fromJson(data['user'] as Map<String, dynamic>);
     if (user.role != 'student') {
@@ -65,7 +68,8 @@ class AuthService {
       if (phone != null) 'phone': phone,
       if (guardianName != null) 'guardianName': guardianName,
       if (address != null) 'address': address,
-      if (emailOtpCode != null && emailOtpCode.isNotEmpty) 'emailOtpCode': emailOtpCode,
+      if (emailOtpCode != null && emailOtpCode.isNotEmpty)
+        'emailOtpCode': emailOtpCode,
     });
     return AppUser.fromJson(data['student'] as Map<String, dynamic>);
   }
@@ -101,7 +105,21 @@ class AuthService {
     });
   }
 
-  Future<void> requestPasswordChangeOtp() => _apiClient.post('/auth/me/password-otp', {});
+  Future<void> requestPasswordReset(String email, String role) => _apiClient
+      .post('/auth/password-reset/request', {'email': email, 'role': role});
+  Future<String> verifyPasswordReset(
+      String email, String role, String otpCode) async {
+    final data = await _apiClient.post('/auth/password-reset/verify',
+        {'email': email, 'role': role, 'otpCode': otpCode});
+    return data['resetToken'] as String;
+  }
+
+  Future<void> completePasswordReset(String resetToken, String newPassword) =>
+      _apiClient.post('/auth/password-reset/complete',
+          {'resetToken': resetToken, 'newPassword': newPassword});
+
+  Future<void> requestPasswordChangeOtp() =>
+      _apiClient.post('/auth/me/password-otp', {});
 
   Future<Map<String, dynamic>> setupTwoFactor() async {
     return await _apiClient.post('/auth/2fa/setup', {}) as Map<String, dynamic>;

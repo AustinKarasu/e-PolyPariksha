@@ -160,6 +160,13 @@ CREATE TABLE IF NOT EXISTS otp_security (
   PRIMARY KEY (email, purpose)
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  token_nonce UUID PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS email_notifications (
   id SERIAL PRIMARY KEY,
   event_key VARCHAR(255) NOT NULL UNIQUE,
@@ -176,6 +183,7 @@ CREATE INDEX IF NOT EXISTS idx_events_test ON exam_events(test_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_jti ON auth_sessions(token_jti);
 CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps (email, purpose, expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens (user_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_email_notifications_test ON email_notifications (test_id, event_type);
 CREATE INDEX IF NOT EXISTS idx_users_created_by_admin ON users(created_by_admin_id);
 CREATE INDEX IF NOT EXISTS idx_tests_created_by ON tests(created_by);

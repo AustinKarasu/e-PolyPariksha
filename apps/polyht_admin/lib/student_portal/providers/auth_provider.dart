@@ -20,7 +20,12 @@ class AuthProvider extends ChangeNotifier {
     final token = await _tokenStorage.readToken();
     if (token != null) {
       final biometrics = BiometricService();
-      if (await biometrics.enabled(true) && !await biometrics.authenticate()) { await _tokenStorage.clear(); isLoading = false; notifyListeners(); return; }
+      if (await biometrics.enabled(true) && !await biometrics.authenticate()) {
+        await _tokenStorage.clear();
+        isLoading = false;
+        notifyListeners();
+        return;
+      }
       try {
         user = await _authService.me();
         requiresTwoFactor = false;
@@ -34,7 +39,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String identifier, String password, {String? totpCode}) async {
+  Future<void> login(String identifier, String password,
+      {String? totpCode}) async {
     isLoading = true;
     error = null;
     if (totpCode != null && totpCode.trim().isNotEmpty) {
@@ -82,7 +88,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> requestEmailChangeOtp(String email) => _authService.requestEmailChangeOtp(email);
+  Future<void> requestEmailChangeOtp(String email) =>
+      _authService.requestEmailChangeOtp(email);
+  Future<void> requestPasswordReset(String email, String role) =>
+      _authService.requestPasswordReset(email, role);
+  Future<String> verifyPasswordReset(
+          String email, String role, String otpCode) =>
+      _authService.verifyPasswordReset(email, role, otpCode);
+  Future<void> completePasswordReset(String resetToken, String newPassword) =>
+      _authService.completePasswordReset(resetToken, newPassword);
 
   Future<void> uploadProfilePhoto({
     String? imagePath,
@@ -110,9 +124,12 @@ class AuthProvider extends ChangeNotifier {
       emailOtpCode: emailOtpCode,
     );
   }
-  Future<void> requestPasswordChangeOtp() => _authService.requestPasswordChangeOtp();
 
-  Future<Map<String, dynamic>> setupTwoFactor() => _authService.setupTwoFactor();
+  Future<void> requestPasswordChangeOtp() =>
+      _authService.requestPasswordChangeOtp();
+
+  Future<Map<String, dynamic>> setupTwoFactor() =>
+      _authService.setupTwoFactor();
 
   Future<void> enableTwoFactor(String code) async {
     user = await _authService.enableTwoFactor(code);

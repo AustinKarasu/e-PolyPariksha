@@ -12,7 +12,8 @@ const OTP_PURPOSES = {
   adminLogin: 'admin_login',
   adminRegister: 'admin_register',
   emailChange: 'email_change',
-  passwordChange: 'password_change'
+  passwordChange: 'password_change',
+  passwordReset: 'password_reset'
 };
 
 async function login(identifier, password, context = {}) {
@@ -220,6 +221,78 @@ async function requestPasswordChangeOtp(userId) {
   return { status: 'sent' };
 }
 
+async function requestPasswordReset(email, role) {
+  const normalizedEmail = normalizeEmail(email);
+  const requestedRole = normalizeResetRole(role);
+  const rows = await query(
+    `SELECT id, email FROM users
+     WHERE lower(email) = lower($1) AND role = $2 AND is_active = true
+     LIMIT 1`,
+    [normalizedEmail, requestedRole]
+  );
+  // Return the same acknowledgement for an unknown address so this public
+  // endpoint cannot be used to discover accounts.
+  if (rows[0]?.email) {
+    await emailOtpService.sendOtp(rows[0].email, OTP_PURPOSES.passwordReset, 'Reset your e-PolyPariksha HP password');
+  }
+  return { status: 'sent', message: 'If that email belongs to an active account, a verification code has been sent.' };
+}
+
+async function verifyPasswordReset(email, role, otpCode) {
+  const normalizedEmail = normalizeEmail(email);
+  const requestedRole = normalizeResetRole(role);
+  const rows = await query(
+    `SELECT id, email, role FROM users
+     WHERE lower(email) = lower($1) AND role = $2 AND is_active = true
+     LIMIT 1`,
+    [normalizedEmail, requestedRole]
+  );
+  const user = rows[0];
+  if (!user) throw new ApiError(422, 'Invalid or expired verification code');
+  await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.passwordReset, otpCode);
+  const nonce = crypto.randomUUID();
+  await query(
+    `INSERT INTO password_reset_tokens (token_nonce, user_id, expires_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '10 minutes')`,
+    [nonce, user.id]
+  );
+  const resetToken = jwt.sign(
+    { sub: user.id, role: user.role, purpose: 'password_reset', nonce },
+    env.jwtSecret,
+    { expiresIn: '10m' }
+  );
+  return { resetToken };
+}
+
+async function completePasswordReset(resetToken, newPassword) {
+  let payload;
+  try {
+    payload = jwt.verify(resetToken, env.jwtSecret);
+  } catch (_) {
+    throw new ApiError(422, 'Your reset session has expired. Request a new OTP.');
+  }
+  if (payload.purpose !== 'password_reset' || !payload.sub || !payload.nonce) {
+    throw new ApiError(422, 'Invalid password reset session');
+  }
+  const rows = await query(
+    'SELECT id, email, full_name FROM users WHERE id = $1 AND role = $2 AND is_active = true LIMIT 1',
+    [payload.sub, payload.role]
+  );
+  const user = rows[0];
+  if (!user) throw new ApiError(401, 'User account is inactive or no longer exists');
+  const consumed = await query(
+    `DELETE FROM password_reset_tokens
+     WHERE token_nonce = $1 AND user_id = $2 AND expires_at > CURRENT_TIMESTAMP
+     RETURNING token_nonce`,
+    [payload.nonce, user.id]
+  );
+  if (!consumed[0]) throw new ApiError(422, 'This password reset session has expired or was already used.');
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [passwordHash, user.id]);
+  await query('UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND revoked_at IS NULL', [user.id]);
+  await notificationService.notifySecurityEvent(user, 'password_changed', 'Password reset completed');
+}
+
 async function changeCurrentUserPassword(userId, { currentPassword, newPassword, totpCode, emailOtpCode }) {
   const rows = await query(
     `SELECT id, email, full_name, password_hash, two_factor_enabled, two_factor_secret
@@ -302,6 +375,11 @@ function sanitizeUser(user) {
   return copy;
 }
 
+function normalizeResetRole(role) {
+  if (role !== 'admin' && role !== 'student') throw new ApiError(422, 'A valid account type is required');
+  return role;
+}
+
 function loginFailureKey(identifier) {
   return crypto.createHash('sha256').update(String(identifier || '').trim().toLowerCase()).digest('hex');
 }
@@ -362,6 +440,9 @@ module.exports = {
   requestAdminRegistrationOtp,
   requestEmailChangeOtp,
   requestPasswordChangeOtp,
+  requestPasswordReset,
+  verifyPasswordReset,
+  completePasswordReset,
   registerAdmin,
   getCurrentUser,
   updateCurrentUser,

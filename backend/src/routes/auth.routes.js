@@ -28,6 +28,30 @@ router.post(
   authController.requestAdminRegistrationOtp
 );
 
+const passwordResetValidation = [
+  body('email').isEmail().normalizeEmail(),
+  body('role').isIn(['admin', 'student'])
+];
+
+router.post('/password-reset/request', authLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
+router.post(
+  '/password-reset/verify',
+  authLimiter,
+  [...passwordResetValidation, body('otpCode').trim().isLength({ min: 6, max: 8 })],
+  validate,
+  authController.verifyPasswordReset
+);
+router.post(
+  '/password-reset/complete',
+  authLimiter,
+  [
+    body('resetToken').trim().isLength({ min: 20 }),
+    body('newPassword').isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  ],
+  validate,
+  authController.completePasswordReset
+);
+
 router.post(
   '/register-admin',
   authLimiter,
