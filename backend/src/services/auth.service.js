@@ -52,11 +52,15 @@ async function login(identifier, password, context = {}) {
   }
 
   if (user.role === 'admin') {
-    if (!context.emailOtpCode) {
+    const trustedDevice = await hasTrustedAdminDevice(user.id, context.deviceLabel);
+    if (!trustedDevice && !context.emailOtpCode) {
       await emailOtpService.sendOtp(user.email, OTP_PURPOSES.adminLogin, 'e-PolyPariksha HP admin sign-in code');
       return { requiresEmailOtp: true, message: 'Email OTP sent to your admin email.' };
     }
-    await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.adminLogin, context.emailOtpCode);
+    if (!trustedDevice) {
+      await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.adminLogin, context.emailOtpCode);
+      await trustAdminDevice(user.id, context.deviceLabel);
+    }
   } else if (user.two_factor_enabled) {
     if (!context.totpCode) {
       return { requiresTwoFactor: true, message: 'Authenticator code required' };
@@ -420,6 +424,36 @@ function normalizeResetRole(role) {
 function isDobPassword(dob, password) {
   const parts = dobParts(dob);
   return parts != null && String(password || '').trim() == `${parts.day}${parts.month}${parts.year}`;
+}
+
+function deviceKey(deviceLabel) {
+  const value = String(deviceLabel || '').trim();
+  return value ? crypto.createHash('sha256').update(value).digest('hex') : null;
+}
+
+async function hasTrustedAdminDevice(userId, deviceLabel) {
+  const key = deviceKey(deviceLabel);
+  if (!key) return false;
+  const rows = await query(
+    `SELECT 1 FROM admin_trusted_devices
+     WHERE user_id = $1 AND device_key = $2 AND verified_until > CURRENT_TIMESTAMP
+     LIMIT 1`,
+    [userId, key]
+  );
+  return Boolean(rows[0]);
+}
+
+async function trustAdminDevice(userId, deviceLabel) {
+  const key = deviceKey(deviceLabel);
+  if (!key) return;
+  await query(
+    `INSERT INTO admin_trusted_devices (user_id, device_key, verified_until, updated_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP)
+     ON CONFLICT (user_id, device_key) DO UPDATE SET
+       verified_until = EXCLUDED.verified_until,
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, key]
+  );
 }
 
 function dobParts(dob) {

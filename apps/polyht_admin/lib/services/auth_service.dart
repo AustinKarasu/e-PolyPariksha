@@ -22,9 +22,11 @@ class AuthService {
 
   Future<AppUser> login(String identifier, String password,
       {String? emailOtpCode}) async {
+    final deviceLabel = await _tokenStorage.deviceId();
     final data = await _apiClient.post('/auth/login', {
       'identifier': identifier,
       'password': password,
+      'deviceLabel': deviceLabel,
       if (emailOtpCode != null && emailOtpCode.isNotEmpty)
         'emailOtpCode': emailOtpCode,
     });

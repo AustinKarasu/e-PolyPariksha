@@ -47,7 +47,8 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Upload Test PDF'),
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
+        flexibleSpace: Container(
+            decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -72,7 +73,8 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                         color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.upload_file_rounded, color: AppTheme.primary),
+                      child: const Icon(Icons.upload_file_rounded,
+                          color: AppTheme.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -81,11 +83,14 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                         children: [
                           const Text(
                             'Schedule a House Test',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 15),
                           ),
                           Text(
                             'Upload a PDF and set the exam window.',
-                            style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5)),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.ink.withValues(alpha: 0.5)),
                           ),
                         ],
                       ),
@@ -102,7 +107,9 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                   labelText: 'Test title',
                   prefixIcon: Icon(Icons.title_rounded),
                 ),
-                validator: (value) => value == null || value.trim().length < 3 ? 'Enter a title (min 3 chars)' : null,
+                validator: (value) => value == null || value.trim().length < 3
+                    ? 'Enter a title (min 3 chars)'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -114,7 +121,8 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                   prefixIcon: Icon(Icons.account_tree_outlined),
                 ),
                 items: _branches.map((branch) {
-                  return DropdownMenuItem(value: branch, child: Text(branch.name));
+                  return DropdownMenuItem(
+                      value: branch, child: Text(branch.name));
                 }).toList(),
                 onChanged: (branch) => setState(() => _selectedBranch = branch),
                 validator: (value) => value == null ? 'Choose a branch' : null,
@@ -128,9 +136,11 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                   prefixIcon: Icon(Icons.school_outlined),
                 ),
                 items: List.generate(6, (index) => index + 1)
-                    .map((semester) => DropdownMenuItem(value: semester, child: Text('Semester $semester')))
+                    .map((semester) => DropdownMenuItem(
+                        value: semester, child: Text('Semester $semester')))
                     .toList(),
-                onChanged: (semester) => setState(() => _selectedSemester = semester ?? 1),
+                onChanged: (semester) =>
+                    setState(() => _selectedSemester = semester ?? 1),
               ),
               const SizedBox(height: 16),
 
@@ -144,7 +154,9 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                 ),
                 validator: (value) {
                   final minutes = int.tryParse(value ?? '');
-                  return minutes == null || minutes <= 0 ? 'Enter valid minutes' : null;
+                  return minutes == null || minutes <= 0
+                      ? 'Enter valid minutes'
+                      : null;
                 },
               ),
               const SizedBox(height: 20),
@@ -164,9 +176,11 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
               _ActionTile(
                 icon: Icons.picture_as_pdf_rounded,
                 label: _pdfName ?? 'Choose PDF file',
-                subtitle: _pdfPath == null && _pdfBytes == null ? 'Required' : null,
+                subtitle:
+                    _pdfPath == null && _pdfBytes == null ? 'Required' : null,
                 trailing: _pdfPath != null || _pdfBytes != null
-                    ? const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 20)
+                    ? const Icon(Icons.check_circle_rounded,
+                        color: AppTheme.success, size: 20)
                     : null,
                 onTap: _pickPdf,
               ),
@@ -181,7 +195,8 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
                         )
                       : const Icon(Icons.publish_rounded),
                   label: Text(_saving ? 'Scheduling…' : 'Schedule Test'),
@@ -196,7 +211,20 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
 
   String _formatDate(DateTime dt) {
     final d = dt.toLocal();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final h = d.hour > 12 ? d.hour - 12 : (d.hour == 0 ? 12 : d.hour);
     final ampm = d.hour >= 12 ? 'PM' : 'AM';
     return '${d.day} ${months[d.month - 1]}, $h:${d.minute.toString().padLeft(2, '0')} $ampm';
@@ -218,10 +246,29 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
     );
     if (result != null) {
       final file = result.files.single;
+      final bytes = file.bytes;
+      final isPdf = bytes == null ||
+          (bytes.length >= 5 &&
+              bytes[0] == 0x25 &&
+              bytes[1] == 0x50 &&
+              bytes[2] == 0x44 &&
+              bytes[3] == 0x46 &&
+              bytes[4] == 0x2D);
+      if (!isPdf) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'This file is not a valid PDF document. Select the original .pdf file.')),
+        );
+        return;
+      }
       if (file.size > _maxUploadBytes) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF is too large for mobile upload. Use a PDF under 4 MB.')),
+          const SnackBar(
+              content: Text(
+                  'PDF is too large for mobile upload. Use a PDF under 4 MB.')),
         );
         return;
       }
@@ -241,9 +288,11 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
       initialDate: DateTime.now(),
     );
     if (!mounted || date == null) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final time =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (time == null) return;
-    final start = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final start =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
     final minutes = int.tryParse(_timeLimitController.text) ?? 60;
     setState(() {
       _start = start;
@@ -252,9 +301,15 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || (_pdfPath == null && _pdfBytes == null) || _pdfName == null || _start == null || _end == null) {
+    if (!_formKey.currentState!.validate() ||
+        (_pdfPath == null && _pdfBytes == null) ||
+        _pdfName == null ||
+        _start == null ||
+        _end == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields, choose a schedule, and pick a PDF.')),
+        const SnackBar(
+            content: Text(
+                'Please fill all fields, choose a schedule, and pick a PDF.')),
       );
       return;
     }
@@ -275,12 +330,23 @@ class _UploadTestScreenState extends State<UploadTestScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
+          SnackBar(content: Text(_uploadError(e))),
         );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  String _uploadError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    if (message.contains('valid PDF') || message.contains('.pdf extension')) {
+      return 'Upload failed: select the original PDF file, not a renamed or preview file.';
+    }
+    if (message.contains('File too large')) {
+      return 'Upload failed: the PDF exceeds the allowed size.';
+    }
+    return 'Upload failed: $message';
   }
 }
 
@@ -303,7 +369,8 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = Theme.of(context).textTheme.bodyMedium?.color ?? AppTheme.ink;
+    final textColor =
+        Theme.of(context).textTheme.bodyMedium?.color ?? AppTheme.ink;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -312,11 +379,14 @@ class _ActionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.2)),
+          border:
+              Border.all(color: AppTheme.primaryLight.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: isDark ? AppTheme.primaryLight : AppTheme.primary),
+            Icon(icon,
+                size: 22,
+                color: isDark ? AppTheme.primaryLight : AppTheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -324,20 +394,27 @@ class _ActionTile extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textColor),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: textColor),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: TextStyle(fontSize: 11, color: textColor.withValues(alpha: 0.45)),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: textColor.withValues(alpha: 0.45)),
                     ),
                 ],
               ),
             ),
             if (trailing != null) trailing!,
-            if (trailing == null) Icon(Icons.chevron_right, size: 20, color: textColor.withValues(alpha: 0.35)),
+            if (trailing == null)
+              Icon(Icons.chevron_right,
+                  size: 20, color: textColor.withValues(alpha: 0.35)),
           ],
         ),
       ),

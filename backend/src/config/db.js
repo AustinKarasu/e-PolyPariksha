@@ -142,6 +142,14 @@ async function ensureRuntimeSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_email_notifications_test ON email_notifications (test_id, event_type);
 
+      CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        device_key VARCHAR(64) NOT NULL,
+        verified_until TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, device_key)
+      );
+
       UPDATE users
       SET is_primary_admin = TRUE,
           is_active = TRUE,

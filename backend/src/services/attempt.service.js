@@ -1,16 +1,14 @@
 const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 
-const criticalEvents = new Set([
-  'app_backgrounded',
-  'app_detached',
-  'app_hidden',
-  'back_blocked',
-  'split_screen_detected',
-  'picture_in_picture_detected',
-  'window_focus_lost'
+const navigationEvents = new Set([
+  'back_navigation_attempt',
+  'home_navigation_attempt',
+  'split_screen_attempt',
+  'picture_in_picture_attempt'
 ]);
-const warningEvents = new Set(['app_inactive', 'app_resumed', 'time_limit_reached']);
+const warningEvents = new Set(['app_inactive', 'app_resumed', 'time_limit_reached', ...navigationEvents]);
+const maxNavigationAttempts = 30;
 
 async function startAttempt(testId, user, context = {}) {
   const test = await getAssignedLiveTestForUser(testId, user);
@@ -86,14 +84,37 @@ async function recordStudentEvent(testId, user, eventType, metadata = {}, contex
     return { locked: true };
   }
 
-  if (criticalEvents.has(eventType)) {
-    severity = 'critical';
-    message = metadata.message || 'Student left or attempted to leave secure exam mode.';
-  } else {
-    severity = warningEvents.has(eventType) ? 'warning' : 'info';
+  severity = warningEvents.has(eventType) ? 'warning' : 'info';
+  if (navigationEvents.has(eventType)) {
+    message = metadata.message || 'Student attempted navigation during the examination.';
   }
 
-  if (criticalEvents.has(eventType)) {
+  await recordEvent({
+    attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
+    eventType, severity, message, metadata, context
+  });
+
+  if (navigationEvents.has(eventType)) {
+    const countRows = await query(
+      'SELECT COUNT(*)::INT AS count FROM exam_events WHERE attempt_id = $1 AND event_type = $2',
+      [attempt.id, eventType]
+    );
+    const attempts = Number(countRows[0]?.count || 0);
+    if (attempts > maxNavigationAttempts) {
+      const lockMessage = `${eventType.replace(/_/g, ' ')} exceeded ${maxNavigationAttempts} attempts.`;
+      await query(
+        `UPDATE test_attempts
+         SET last_seen_at = CURRENT_TIMESTAMP, status = 'blocked', blocked_reason = $1, blocked_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [lockMessage, attempt.id]
+      );
+      return { locked: true, attempts };
+    }
+    await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
+    return { locked: false, attempts };
+  }
+
+  if (eventType === 'app_detached') {
     await query(
       `UPDATE test_attempts
        SET last_seen_at = CURRENT_TIMESTAMP,
@@ -107,12 +128,7 @@ async function recordStudentEvent(testId, user, eventType, metadata = {}, contex
     await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
   }
 
-  await recordEvent({
-    attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
-    eventType, severity, message, metadata, context
-  });
-
-  return { locked: criticalEvents.has(eventType) };
+  return { locked: eventType === 'app_detached' };
 }
 
 async function recordEvent({ attemptId, testId, studentId, branchId, eventType, severity = 'info', message = null, metadata = null, context = {} }) {

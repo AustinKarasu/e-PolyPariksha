@@ -183,6 +183,14 @@ CREATE INDEX IF NOT EXISTS idx_events_attempt ON exam_events(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_events_test ON exam_events(test_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_jti ON auth_sessions(token_jti);
+
+CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_key VARCHAR(64) NOT NULL,
+  verified_until TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, device_key)
+);
 CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps (email, purpose, expires_at);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens (user_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_email_notifications_test ON email_notifications (test_id, event_type);

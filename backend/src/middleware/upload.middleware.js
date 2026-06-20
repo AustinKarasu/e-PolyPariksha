@@ -19,9 +19,8 @@ const pdfUpload = multer({
   storage: env.storage.driver === 's3' ? multer.memoryStorage() : diskStorage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const isPdf = file.mimetype === 'application/pdf' && file.originalname.toLowerCase().endsWith('.pdf');
-    if (!isPdf) {
-      return cb(new ApiError(422, 'Only PDF files are allowed'));
+    if (!file.originalname.toLowerCase().endsWith('.pdf')) {
+      return cb(new ApiError(422, 'Select a file with a .pdf extension'));
     }
     return cb(null, true);
   }

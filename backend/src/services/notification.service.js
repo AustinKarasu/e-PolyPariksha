@@ -89,12 +89,13 @@ async function notifyTest(test, eventType) {
   const copy = {
     scheduled: ['Test scheduled', 'A new examination has been scheduled for your branch and semester.', 'Please review the date, time, and duration below and be ready before the start time.'],
     started: ['Test has started', 'Your scheduled examination is now live.', 'Open e-PolyPariksha HP to begin the examination before the end time.'],
-    ended: ['Test has ended', 'The examination window has now closed.', 'The question paper is attached for your records.']
+    ended: ['Test has ended', 'The examination window has now closed.', 'The question paper is attached for your records.'],
+    cancelled: ['Test cancelled', 'This examination has been cancelled and will not take place.', 'You do not need to take any action. We will notify you when a new relevant test is scheduled or starts.']
   }[eventType];
   if (!copy) return;
   const [heading, intro, action] = copy;
   const studentHtml = emailHtml({ heading, intro, test, action });
-  const adminHtml = emailHtml({ heading: `${heading}: ${test.title}`, intro: `A ${eventType} notification was sent to eligible students in ${test.branch_name}, Semester ${test.semester}.`, test, action: eventType === 'ended' ? 'The question paper is attached for your records.' : 'This notification applies only to eligible students.' });
+  const adminHtml = emailHtml({ heading: `${heading}: ${test.title}`, intro: `A ${eventType} notification was sent to eligible students in ${test.branch_name}, Semester ${test.semester}.`, test, action: eventType === 'ended' ? 'The question paper is attached for your records.' : eventType === 'cancelled' ? 'Eligible students have been told that the test is cancelled and that future relevant test updates will be sent.' : 'This notification applies only to eligible students.' });
   await Promise.allSettled([
     ...students.map((email) => markAndSend({ eventType: `student_${eventType}`, test, email, subject: `e-PolyPariksha HP: ${heading}`, html: studentHtml, includePdf: eventType === 'ended' })),
     ...admins.map((email) => markAndSend({ eventType: `admin_${eventType}`, test, email, subject: `e-PolyPariksha HP: ${heading}`, html: adminHtml, includePdf: eventType === 'ended' }))

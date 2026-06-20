@@ -7,8 +7,8 @@ const notificationService = require('./notification.service');
 async function createTest({ title, branchId, semester, scheduledStart, scheduledEnd, timeLimitMinutes, file, createdBy }) {
   if (!file) throw new ApiError(422, 'PDF file is required');
 
+  const pdfBytes = await readVerifiedPdf(file);
   const saved = await storageService.savePdf(file);
-  const pdfBytes = await storageService.getUploadedFileBytes(file);
   const rows = await query(
     `INSERT INTO tests (
        title, branch_id, semester, pdf_path, pdf_data, pdf_original_name, pdf_mime_type, pdf_size,
@@ -17,7 +17,7 @@ async function createTest({ title, branchId, semester, scheduledStart, scheduled
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
     [
       title, branchId, semester, saved.path, pdfBytes, file.originalname,
-      file.mimetype || 'application/pdf', pdfBytes.length,
+      'application/pdf', pdfBytes.length,
       scheduledStart, scheduledEnd, timeLimitMinutes, createdBy
     ]
   );
@@ -172,24 +172,34 @@ async function replacePdf(id, file, adminId) {
   if (!file) throw new ApiError(422, 'PDF file is required');
   const existing = await getTestById(id);
   await assertAdminCanManageTest(existing, adminId);
+  const pdfBytes = await readVerifiedPdf(file);
   const saved = await storageService.savePdf(file);
-  const pdfBytes = await storageService.getUploadedFileBytes(file);
   await query(
     `UPDATE tests
      SET pdf_path = $1, pdf_data = $2, pdf_original_name = $3, pdf_mime_type = $4,
          pdf_size = $5, updated_at = CURRENT_TIMESTAMP
      WHERE id = $6`,
-    [saved.path, pdfBytes, file.originalname, file.mimetype || 'application/pdf', pdfBytes.length, id]
+    [saved.path, pdfBytes, file.originalname, 'application/pdf', pdfBytes.length, id]
   );
   await storageService.deletePdf(existing.pdf_path);
   return getTestById(id);
 }
 
+async function readVerifiedPdf(file) {
+  const bytes = await storageService.getUploadedFileBytes(file);
+  const isPdf = bytes.length >= 5 && bytes.subarray(0, 5).toString('ascii') === '%PDF-';
+  if (!isPdf) {
+    throw new ApiError(422, 'The selected file is not a valid PDF document. Open it once on your device and select the original .pdf file.');
+  }
+  return bytes;
+}
+
 async function removeTest(id, adminId) {
+  const cancelledTest = await getTestById(id);
+  await assertAdminCanManageTest(cancelledTest, adminId);
   await transaction(async (tx) => {
     const rows = await tx('SELECT id FROM tests WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]);
     if (!rows[0]) throw new ApiError(404, 'Test not found');
-    await assertAdminCanManageTest(await getTestById(id), adminId);
     await tx(
       `UPDATE tests
        SET deleted_at = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP
@@ -197,6 +207,8 @@ async function removeTest(id, adminId) {
       [id]
     );
   });
+  await notificationService.notifyTest(cancelledTest, 'cancelled');
+  return cancelledTest;
 }
 
 async function getStudentPdf(testId, user, context = {}) {
