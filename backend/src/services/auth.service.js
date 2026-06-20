@@ -326,9 +326,9 @@ async function completePasswordReset(resetToken, newPassword) {
   await notificationService.notifySecurityEvent(user, 'password_changed', 'Password reset completed');
 }
 
-async function changeCurrentUserPassword(userId, { currentPassword, newPassword, totpCode, emailOtpCode }) {
+async function changeCurrentUserPassword(userId, { newPassword, totpCode, emailOtpCode }) {
   const rows = await query(
-    `SELECT id, email, full_name, password_hash, two_factor_enabled, two_factor_secret
+    `SELECT id, email, full_name, two_factor_enabled, two_factor_secret
      FROM users WHERE id = $1 AND is_active = true LIMIT 1`,
     [userId]
   );
@@ -338,10 +338,6 @@ async function changeCurrentUserPassword(userId, { currentPassword, newPassword,
   await emailOtpService.verifyOtp(user.email, OTP_PURPOSES.passwordChange, emailOtpCode);
   if (user.two_factor_enabled && !verifyTotp(totpCode, user.two_factor_secret)) {
     throw new ApiError(422, 'Invalid authenticator code');
-  }
-  const matches = await bcrypt.compare(currentPassword, user.password_hash);
-  if (!matches) {
-    throw new ApiError(401, 'Current password is incorrect');
   }
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await query(

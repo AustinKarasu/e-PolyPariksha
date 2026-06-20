@@ -98,12 +98,11 @@ router.patch(
 router.put('/me/photo', authenticate, imageUpload.single('photo'), authController.updateMyPhoto);
 router.post(
   '/me/password',
-  authenticate,
-  [
-    body('currentPassword').isLength({ min: 6 }),
-    body('newPassword').isStrongPassword({
-      minLength: 8,
-      minLowercase: 1,
+    authenticate,
+    [
+      body('newPassword').isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
       minUppercase: 1,
       minNumbers: 1,
       minSymbols: 1

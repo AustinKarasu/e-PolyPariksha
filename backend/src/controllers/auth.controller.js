@@ -92,7 +92,6 @@ async function updateMyPhoto(req, res, next) {
 async function changePassword(req, res, next) {
   try {
     await authService.changeCurrentUserPassword(req.user.sub, {
-      currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
       totpCode: req.body.totpCode,
       emailOtpCode: req.body.emailOtpCode

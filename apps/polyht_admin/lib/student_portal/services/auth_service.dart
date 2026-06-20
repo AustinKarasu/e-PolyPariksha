@@ -11,7 +11,10 @@ class TwoFactorRequiredException implements Exception {
   @override
   String toString() => message;
 }
-class CredentialSetupRequiredException implements Exception { const CredentialSetupRequiredException(); }
+
+class CredentialSetupRequiredException implements Exception {
+  const CredentialSetupRequiredException();
+}
 
 class AuthService {
   AuthService({ApiClient? apiClient, TokenStorage? tokenStorage})
@@ -37,7 +40,10 @@ class AuthService {
       throw Exception('Student access only');
     }
     await _tokenStorage.saveToken(data['token'] as String);
-    if (data['requiresCredentialSetup'] == true) throw const CredentialSetupRequiredException();
+    if (data['requiresCredentialSetup'] == true ||
+        _isDobPassword(user.dob, password)) {
+      throw const CredentialSetupRequiredException();
+    }
     return user;
   }
 
@@ -79,9 +85,13 @@ class AuthService {
   Future<void> requestEmailChangeOtp(String email) async {
     await _apiClient.post('/students/me/email-otp', {'email': email});
   }
-  Future<void> requestInitialCredentialsOtp(String email) => _apiClient.post('/auth/me/initial-credentials/otp', {'email': email});
-  Future<AppUser> completeInitialCredentials(String email, String otp, String password) async {
-    final data = await _apiClient.post('/auth/me/initial-credentials', {'email': email, 'emailOtpCode': otp, 'newPassword': password});
+
+  Future<void> requestInitialCredentialsOtp(String email) =>
+      _apiClient.post('/auth/me/initial-credentials/otp', {'email': email});
+  Future<AppUser> completeInitialCredentials(
+      String email, String otp, String password) async {
+    final data = await _apiClient.post('/auth/me/initial-credentials',
+        {'email': email, 'emailOtpCode': otp, 'newPassword': password});
     return AppUser.fromJson(data['user'] as Map<String, dynamic>);
   }
 
@@ -99,13 +109,11 @@ class AuthService {
   }
 
   Future<void> changePassword({
-    required String currentPassword,
     required String newPassword,
     String? totpCode,
     required String emailOtpCode,
   }) async {
     await _apiClient.post('/auth/me/password', {
-      'currentPassword': currentPassword,
       'newPassword': newPassword,
       if (totpCode != null && totpCode.isNotEmpty) 'totpCode': totpCode,
       'emailOtpCode': emailOtpCode,
@@ -140,5 +148,14 @@ class AuthService {
   Future<AppUser> disableTwoFactor(String code) async {
     final data = await _apiClient.post('/auth/2fa/disable', {'code': code});
     return AppUser.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  bool _isDobPassword(String? dob, String password) {
+    if (dob == null || password.trim().length != 8) return false;
+    final cleanDob = dob.trim();
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(cleanDob);
+    if (match == null) return false;
+    return password.trim() ==
+        '${match.group(3)}${match.group(2)}${match.group(1)}';
   }
 }

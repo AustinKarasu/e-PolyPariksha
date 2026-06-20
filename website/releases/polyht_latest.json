@@ -1,10 +1,10 @@
 {
     "appId":  "epolypariksha-hp",
     "latestVersion":  "1.0.0",
-    "latestBuild":  65,
+    "latestBuild":  66,
     "mandatory":  true,
-    "releaseNotes":  "e-PolyPariksha HP update:\n- Students who still use DOB passwords are now forced to complete email and password setup from login or dashboard.\n- Student profile email OTP now appears only when changing email and has a clear Send OTP button.\n- The setup popup verifies the email with OTP before saving email and password.",
-    "downloadUrl":  "http://150.242.202.246/downloads/epolypariksha-hp-v1.0-build65.apk",
+    "releaseNotes":  "e-PolyPariksha HP update:\n- App Info now shows the installed version and build number.\n- DOB-password student login now also triggers setup from the app side.\n- Student password reset uses email OTP and no longer asks for the current password.\n- Password reset and profile email changes now have clear Send OTP buttons.",
+    "downloadUrl":  "http://150.242.202.246/downloads/epolypariksha-hp-v1.0-build66.apk",
     "packageName":  "in.polyht.polyht_admin",
     "usePlayStore":  false,
     "playStoreUrl":  ""

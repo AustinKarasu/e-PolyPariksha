@@ -8,11 +8,19 @@ import '../../services/biometric_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-  @override State<SettingsScreen> createState() => _SettingsScreenState();
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
+
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricEnabled = false;
-  @override void initState() { super.initState(); BiometricService().enabled(true).then((value) { if (mounted) setState(() => _biometricEnabled = value); }); }
+  @override
+  void initState() {
+    super.initState();
+    BiometricService().enabled(true).then((value) {
+      if (mounted) setState(() => _biometricEnabled = value);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,32 +29,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
+        flexibleSpace: Container(
+            decoration: const BoxDecoration(gradient: AppTheme.headerGradient)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(AppTheme.radiusLg), boxShadow: AppTheme.cardShadow),
+            decoration: BoxDecoration(
+                color: Theme.of(context).cardTheme.color,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                boxShadow: AppTheme.cardShadow),
             child: Row(children: [
               const Icon(Icons.verified_user_outlined, color: AppTheme.primary),
               const SizedBox(width: 12),
-              Expanded(child: Text(enabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is off')),
-              FilledButton(onPressed: () => enabled ? _disable(context) : _enable(context), child: Text(enabled ? 'Disable' : 'Enable')),
+              Expanded(
+                  child: Text(enabled
+                      ? 'Two-factor authentication is enabled'
+                      : 'Two-factor authentication is off')),
+              FilledButton(
+                  onPressed: () =>
+                      enabled ? _disable(context) : _enable(context),
+                  child: Text(enabled ? 'Disable' : 'Enable')),
             ]),
           ),
           const SizedBox(height: 12),
-          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(AppTheme.radiusLg), boxShadow: AppTheme.cardShadow), child: Row(children: [const Icon(Icons.fingerprint_rounded, color: AppTheme.primary), const SizedBox(width: 12), Expanded(child: Text(_biometricEnabled ? 'Biometric unlock is enabled' : 'Biometric unlock is off')), Switch(value: _biometricEnabled, onChanged: (value) async { final biometrics = BiometricService(); if (value && (!(await biometrics.available()) || !(await biometrics.authenticate()))) return; await biometrics.setEnabled(true, value); if (mounted) setState(() => _biometricEnabled = value); })])),
+          Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  boxShadow: AppTheme.cardShadow),
+              child: Row(children: [
+                const Icon(Icons.fingerprint_rounded, color: AppTheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Text(_biometricEnabled
+                        ? 'Biometric unlock is enabled'
+                        : 'Biometric unlock is off')),
+                Switch(
+                    value: _biometricEnabled,
+                    onChanged: (value) async {
+                      final biometrics = BiometricService();
+                      if (value &&
+                          (!(await biometrics.available()) ||
+                              !(await biometrics.authenticate()))) {
+                        return;
+                      }
+                      await biometrics.setEnabled(true, value);
+                      if (mounted) setState(() => _biometricEnabled = value);
+                    })
+              ])),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(AppTheme.radiusLg), boxShadow: AppTheme.cardShadow),
+            decoration: BoxDecoration(
+                color: Theme.of(context).cardTheme.color,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                boxShadow: AppTheme.cardShadow),
             child: Row(children: [
               const Icon(Icons.lock_reset_rounded, color: AppTheme.primary),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(enabled ? 'Change your password using 2FA verification' : 'Change your password'),
+              const Expanded(
+                child: Text('Reset your password using email OTP'),
               ),
               FilledButton(
                 onPressed: () => _changePassword(context),
@@ -70,46 +116,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _changePassword(BuildContext context) async {
     final auth = context.read<AuthProvider>();
-    final current = TextEditingController();
     final next = TextEditingController();
     final confirm = TextEditingController();
     final code = TextEditingController();
     final emailOtp = TextEditingController();
     final twoFactorEnabled = auth.user?.twoFactorEnabled == true;
+    var sendingOtp = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: current, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
-            const SizedBox(height: 12),
-            TextField(controller: next, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
-            const SizedBox(height: 12),
-            TextField(controller: confirm, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm new password')),
-            if (twoFactorEnabled) ...[
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Reset Password'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                  'Send an OTP to your registered email, then create a new password.'),
               const SizedBox(height: 12),
-              TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Authenticator code')),
-            ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: emailOtp,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'Email OTP', suffixIcon: IconButton(tooltip: 'Send email OTP', icon: const Icon(Icons.send_outlined), onPressed: () async {
-                await auth.requestPasswordChangeOtp();
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password-change OTP sent to your email')));
-              })),
-            ),
-          ]),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: sendingOtp
+                      ? null
+                      : () async {
+                          setDialogState(() => sendingOtp = true);
+                          try {
+                            await auth.requestPasswordChangeOtp();
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Password reset OTP sent to your email')));
+                            }
+                          } catch (err) {
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  SnackBar(
+                                      content: Text(err
+                                          .toString()
+                                          .replaceFirst('Exception: ', ''))));
+                            }
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => sendingOtp = false);
+                            }
+                          }
+                        },
+                  icon: sendingOtp
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.send_outlined),
+                  label: Text(sendingOtp ? 'Sending OTP...' : 'Send email OTP'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: emailOtp,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Email OTP')),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: next,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'New password')),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: confirm,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Confirm new password')),
+              if (twoFactorEnabled) ...[
+                const SizedBox(height: 12),
+                TextField(
+                    controller: code,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Authenticator code')),
+              ],
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Save')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
-        ],
       ),
     );
     if (ok != true) {
-      current.dispose();
       next.dispose();
       confirm.dispose();
       code.dispose();
@@ -117,7 +215,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     if (!context.mounted) {
-      current.dispose();
       next.dispose();
       confirm.dispose();
       code.dispose();
@@ -127,27 +224,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final passwordError = _strongPassword(next.text);
     if (passwordError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(passwordError)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(passwordError)));
     } else if (next.text != confirm.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New passwords do not match')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('New passwords do not match')));
+    } else if (emailOtp.text.trim().length < 6) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Enter the email OTP')));
     } else {
       try {
         await auth.changePassword(
-          currentPassword: current.text,
           newPassword: next.text,
           totpCode: code.text.trim(),
           emailOtpCode: emailOtp.text.trim(),
         );
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Password changed')));
         }
       } catch (err) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(err.toString().replaceFirst('Exception: ', ''))));
         }
       }
     }
-    current.dispose();
     next.dispose();
     confirm.dispose();
     code.dispose();
@@ -164,25 +266,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Enable 2FA'),
         content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Scan the QR code with your authenticator app, then enter the generated code.'),
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                color: Colors.white,
-                padding: const EdgeInsets.all(12),
-                child: QrImageView(data: setup['otpauthUrl'] as String, size: 190),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SelectableText(setup['secret'] as String),
-            const SizedBox(height: 12),
-            TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Authenticator code')),
-          ]),
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                    'Scan the QR code with your authenticator app, then enter the generated code.'),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(12),
+                    child: QrImageView(
+                        data: setup['otpauthUrl'] as String, size: 190),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SelectableText(setup['secret'] as String),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: code,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Authenticator code')),
+              ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Enable')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Enable')),
         ],
       ),
     );
@@ -197,10 +312,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Disable 2FA'),
-        content: TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Authenticator code')),
+        content: TextField(
+            controller: code,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Authenticator code')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Disable')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Disable')),
         ],
       ),
     );
