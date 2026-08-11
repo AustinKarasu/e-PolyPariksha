@@ -1,22 +1,28 @@
+# Dependencies
 node_modules/
-AppRelease/
+
+# Environment variables & secrets
 .env
 .env.*
 !.env.example
-!.env.*.example
-!*.env.example
+!.env.production.example
+
+# Uploads & Downloads
 uploads/
-build/
-dist/
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-android/local.properties
-ios/Pods/
+downloads/
+
+# Logs
 *.log
+logs/
+
+# Temporary files
+scratch/
+repo.tar.gz
+fix_*.js
+check_*.js
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
 .idea/
-*.iml
-tools/
-*.jks
-*.keystore
-key.properties
