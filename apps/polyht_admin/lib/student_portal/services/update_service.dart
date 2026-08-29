@@ -136,21 +136,27 @@ class UpdateService {
   Future<File> _downloadApk(AppUpdate update) async {
     final uri = Uri.parse(update.downloadUrl);
     final request = http.Request('GET', uri)..followRedirects = true;
-    final response = await request.send().timeout(const Duration(seconds: 20));
-    if (response.statusCode >= 400) {
-      throw Exception('Unable to download update');
-    }
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/epolypariksha-hp-update.apk');
-    final sink = file.openWrite();
+    final client = http.Client();
     try {
-      await response.stream.pipe(sink);
-    } catch (_) {
-      await sink.close();
-      rethrow;
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 60));
+      if (response.statusCode >= 400) {
+        throw Exception('Unable to download update (HTTP ${response.statusCode})');
+      }
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/epolypariksha-hp-update.apk');
+      final sink = file.openWrite();
+      try {
+        await response.stream.pipe(sink);
+      } catch (_) {
+        await sink.close();
+        rethrow;
+      }
+      return file;
+    } finally {
+      client.close();
     }
-    return file;
   }
 
   bool _isNewerVersion(String latest, String current) {
