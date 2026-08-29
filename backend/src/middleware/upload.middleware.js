@@ -4,7 +4,10 @@ const multer = require('multer');
 const { env } = require('../config/env');
 const { ApiError } = require('../utils/api-error');
 
-const uploadPath = path.resolve(env.uploadDir);
+// Vercel serverless has a read-only filesystem except /tmp
+const uploadPath = process.env.VERCEL
+  ? path.join('/tmp', 'uploads')
+  : path.resolve(env.uploadDir);
 try { fs.mkdirSync(uploadPath, { recursive: true }); } catch (_) { /* read-only fs */ }
 
 const diskStorage = multer.diskStorage({
