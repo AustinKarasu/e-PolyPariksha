@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/update_service.dart';
 
@@ -131,8 +132,16 @@ class _UpdateGateState extends State<UpdateGate> {
                       ? 'Downloading...'
                       : update.usesPlayStore
                           ? 'Update on Play Store'
-                          : 'Download ${update.latestVersion}'),
+                          : 'Download & Install ${update.latestVersion}'),
                 ),
+                if (!update.usesPlayStore && update.downloadUrl.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _openInBrowser(update),
+                    icon: const Icon(Icons.open_in_browser_rounded),
+                    label: const Text('Download via Browser'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -147,11 +156,22 @@ class _UpdateGateState extends State<UpdateGate> {
       await _service.openUpdate(update);
     } catch (err) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(err.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Direct installer unavailable. Opening browser download...'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        await _openInBrowser(update);
       }
     } finally {
       if (mounted) setState(() => _installing = false);
     }
+  }
+
+  Future<void> _openInBrowser(AppUpdate update) async {
+    if (update.downloadUrl.isEmpty) return;
+    final uri = Uri.parse(update.downloadUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

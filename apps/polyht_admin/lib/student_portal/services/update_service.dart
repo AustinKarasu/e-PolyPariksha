@@ -121,15 +121,25 @@ class UpdateService {
       }
       return;
     }
-    final apk = await _downloadApk(update);
-    final result = await OpenFilex.open(
-      apk.path,
-      type: 'application/vnd.android.package-archive',
-    );
-    if (result.type != ResultType.done) {
-      throw Exception(result.message.isEmpty
-          ? 'Unable to start update installer'
-          : result.message);
+
+    // Try in-app APK download & native package installation
+    try {
+      final apk = await _downloadApk(update);
+      final result = await OpenFilex.open(
+        apk.path,
+        type: 'application/vnd.android.package-archive',
+      );
+      if (result.type == ResultType.done) {
+        return;
+      }
+    } catch (_) {
+      // In-app download or package installer invocation failed, fall back to browser
+    }
+
+    // Seamless browser fallback
+    final downloadUri = Uri.parse(update.downloadUrl);
+    if (!await launchUrl(downloadUri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Unable to open browser download. Direct link: ${update.downloadUrl}');
     }
   }
 
@@ -139,7 +149,7 @@ class UpdateService {
     final client = http.Client();
     try {
       final response =
-          await client.send(request).timeout(const Duration(seconds: 60));
+          await client.send(request).timeout(const Duration(minutes: 5));
       if (response.statusCode >= 400) {
         throw Exception('Unable to download update (HTTP ${response.statusCode})');
       }
@@ -149,6 +159,7 @@ class UpdateService {
       final sink = file.openWrite();
       try {
         await response.stream.pipe(sink);
+        await sink.flush();
       } catch (_) {
         await sink.close();
         rethrow;

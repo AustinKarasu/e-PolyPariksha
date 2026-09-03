@@ -7,6 +7,6 @@ class UpdateConfig {
 
   static const fallbackManifestUrl = String.fromEnvironment(
     'UPDATE_FALLBACK_MANIFEST_URL',
-    defaultValue: 'http://150.242.202.246/downloads/polyht_latest.json',
+    defaultValue: 'https://github.com/AustinKarasu/e-PolyPariksha/releases/latest/download/polyht_latest.json',
   );
 }
