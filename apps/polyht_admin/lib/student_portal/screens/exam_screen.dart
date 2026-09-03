@@ -394,8 +394,31 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
         return;
       }
       await _testService.startAttempt(widget.test.id);
+      // Second split-screen check after attempt started (closes race condition)
+      if (await _securityService.isInMultiWindowMode()) {
+        await _logNavigationAttempt('split_screen_attempt');
+        await _securityService.exitExamMode();
+        if (mounted) {
+          setState(() {
+            _errorMessage =
+                'Split-screen detected after starting. Close it and reopen the test.';
+            _loading = false;
+          });
+        }
+        return;
+      }
       _startHeartbeat();
-      final path = await _testService.downloadPdf(widget.test.id);
+      // PDF download with retry (up to 2 retries on failure)
+      String? path;
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          path = await _testService.downloadPdf(widget.test.id);
+          break;
+        } catch (e) {
+          if (attempt == 2) rethrow;
+          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+        }
+      }
       await _testService.recordEvent(widget.test.id, 'pdf_opened');
       if (mounted) {
         setState(() {
@@ -477,7 +500,16 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
           await _testService.recordEvent(widget.test.id, 'time_limit_reached');
         } catch (_) {}
       }
-      await _testService.completeAttempt(widget.test.id);
+      // Retry submission up to 2 times on failure
+      for (int i = 0; i < 3; i++) {
+        try {
+          await _testService.completeAttempt(widget.test.id);
+          break;
+        } catch (e) {
+          if (i == 2) rethrow;
+          await Future.delayed(Duration(milliseconds: 500 * (i + 1)));
+        }
+      }
       await _deleteLocalPdf();
       _leavingExam = true;
       await _securityService.exitExamMode();

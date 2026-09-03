@@ -120,6 +120,7 @@ async function downloadAdminPdf(req, res, next) {
 }
 
 function sendPdfDelivery(res, delivery) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   if (delivery.type === 'redirect') {
     return res.redirect(delivery.value);
   }

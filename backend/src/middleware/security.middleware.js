@@ -19,7 +19,9 @@ const globalLimiter = rateLimit({
   limit: env.rateLimit.globalMax,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  skip: (req) => req.path.startsWith('/api/auth/')
+  keyGenerator: (req) => {
+    return req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  }
 });
 
 const authLimiter = rateLimit({

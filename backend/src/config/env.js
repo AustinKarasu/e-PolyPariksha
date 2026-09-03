@@ -15,7 +15,7 @@ const env = {
     authWindowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
     authMax: Number(process.env.AUTH_RATE_LIMIT_MAX || 8),
     globalWindowMs: Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000),
-    globalMax: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 120)
+    globalMax: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 600)
   },
   db: {
     connectionString: (process.env.DATABASE_URL || '').trim(),

@@ -403,7 +403,10 @@ async function getAssignedLiveTestForUser(testId, user) {
 
 async function getAssignedTestForUser(testId, user) {
   const rows = await query(
-    `SELECT * FROM tests
+    `SELECT id, title, branch_id, semester, pdf_path, pdf_original_name, pdf_mime_type, pdf_size,
+            scheduled_start, scheduled_end, time_limit_minutes, is_active, created_by,
+            created_at, updated_at, deleted_at
+     FROM tests
      WHERE id = $1 AND branch_id = $2 AND semester = $3
        AND ($4::int IS NULL OR created_by = $4)
      LIMIT 1`,

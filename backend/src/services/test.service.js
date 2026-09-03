@@ -22,12 +22,12 @@ async function createTest({ title, branchId, semester, scheduledStart, scheduled
     ]
   );
 
-  const test = await getTestById(rows[0].id);
+  const test = await getTestByIdLight(rows[0].id);
   await notificationService.notifyTest(test, 'scheduled');
   return test;
 }
 
-async function getTestById(id) {
+async function getTestByIdFull(id) {
   const rows = await query(
     `SELECT t.*, b.name AS branch_name, b.code AS branch_code
      FROM tests t JOIN branches b ON b.id = t.branch_id WHERE t.id = $1`,
@@ -36,6 +36,28 @@ async function getTestById(id) {
   if (!rows[0]) throw new ApiError(404, 'Test not found');
   return rows[0];
 }
+
+async function getTestByIdLight(id) {
+  const rows = await query(
+    `SELECT t.id, t.title, t.branch_id, t.semester, t.pdf_path, t.pdf_original_name,
+            t.pdf_mime_type, t.pdf_size, t.scheduled_start, t.scheduled_end,
+            t.time_limit_minutes, t.is_active, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+            b.name AS branch_name, b.code AS branch_code
+     FROM tests t JOIN branches b ON b.id = t.branch_id WHERE t.id = $1`,
+    [id]
+  );
+  if (!rows[0]) throw new ApiError(404, 'Test not found');
+  return rows[0];
+}
+
+async function getPdfData(id) {
+  const rows = await query(
+    'SELECT pdf_data, pdf_original_name, pdf_mime_type FROM tests WHERE id = $1',
+    [id]
+  );
+  return rows[0] || null;
+}
+
 
 async function isPrimaryAdmin(adminId) {
   const rows = await query(
@@ -137,41 +159,41 @@ async function assertAdminCanManageTest(test, adminId) {
 }
 
 async function updateTest(id, patch, adminId) {
-  const test = await getTestById(id);
+  const test = await getTestByIdLight(id);
   await assertAdminCanManageTest(test, adminId);
   await query(
     `UPDATE tests SET title = $1, branch_id = $2, semester = $3, scheduled_start = $4, scheduled_end = $5,
      time_limit_minutes = $6, is_active = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8`,
     [patch.title, patch.branchId, patch.semester, patch.scheduledStart, patch.scheduledEnd, patch.timeLimitMinutes, patch.isActive, id]
   );
-  return getTestById(id);
+  return getTestByIdLight(id);
 }
 
 async function setTestActive(id, isActive, adminId) {
-  const test = await getTestById(id);
+  const test = await getTestByIdLight(id);
   await assertAdminCanManageTest(test, adminId);
   await query(
     'UPDATE tests SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
     [isActive, id]
   );
-  return getTestById(id);
+  return getTestByIdLight(id);
 }
 
 async function endTestNow(id, adminId) {
-  const test = await getTestById(id);
+  const test = await getTestByIdLight(id);
   await assertAdminCanManageTest(test, adminId);
   await query(
     'UPDATE tests SET scheduled_end = CURRENT_TIMESTAMP, is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
     [id]
   );
-  const ended = await getTestById(id);
+  const ended = await getTestByIdLight(id);
   await notificationService.notifyTest(ended, 'ended');
   return ended;
 }
 
 async function replacePdf(id, file, adminId) {
   if (!file) throw new ApiError(422, 'PDF file is required');
-  const existing = await getTestById(id);
+  const existing = await getTestByIdLight(id);
   await assertAdminCanManageTest(existing, adminId);
   const pdfBytes = await readVerifiedPdf(file);
   const saved = await storageService.savePdf(file);
@@ -183,7 +205,7 @@ async function replacePdf(id, file, adminId) {
     [saved.path, pdfBytes, file.originalname, 'application/pdf', pdfBytes.length, id]
   );
   await storageService.deletePdf(existing.pdf_path);
-  return getTestById(id);
+  return getTestByIdLight(id);
 }
 
 async function readVerifiedPdf(file) {
@@ -196,7 +218,7 @@ async function readVerifiedPdf(file) {
 }
 
 async function removeTest(id, adminId) {
-  const cancelledTest = await getTestById(id);
+  const cancelledTest = await getTestByIdLight(id);
   await assertAdminCanManageTest(cancelledTest, adminId);
   await transaction(async (tx) => {
     const rows = await tx('SELECT id FROM tests WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]);
@@ -216,7 +238,7 @@ async function removeTest(id, adminId) {
 }
 
 async function getStudentPdf(testId, user, context = {}) {
-  const test = await getTestById(testId);
+  const test = await getTestByIdLight(testId);
   if (user.createdByAdminId && test.created_by !== user.createdByAdminId) {
     throw new ApiError(403, 'This test is not assigned to your admin account');
   }
@@ -226,17 +248,20 @@ async function getStudentPdf(testId, user, context = {}) {
   if (!test.is_active && status !== 'ended') throw new ApiError(403, 'This test is not active');
   if (status === 'ended') {
     await attemptService.recordEndedPdfAccess(test, user, context);
-    return storageService.getPdfDelivery(test.pdf_path, test);
+    const pdfRow = await getPdfData(testId);
+    return storageService.getPdfDelivery(test.pdf_path, { ...test, ...pdfRow });
   }
   if (status !== 'live') throw new ApiError(403, 'PDF is available only during scheduled test time');
   await attemptService.assertLivePdfAccess(testId, user, context);
-  return storageService.getPdfDelivery(test.pdf_path, test);
+  const pdfRow = await getPdfData(testId);
+  return storageService.getPdfDelivery(test.pdf_path, { ...test, ...pdfRow });
 }
 
 async function getAdminPdf(testId, adminId) {
-  const test = await getTestById(testId);
+  const test = await getTestByIdLight(testId);
   await assertAdminCanManageTest(test, adminId);
-  return storageService.getPdfDelivery(test.pdf_path, test);
+  const pdfRow = await getPdfData(testId);
+  return storageService.getPdfDelivery(test.pdf_path, { ...test, ...pdfRow });
 }
 
 function statusForTest(test) {

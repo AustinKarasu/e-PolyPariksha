@@ -9,9 +9,9 @@ const pool = new Pool({
   password: env.db.connectionString ? undefined : env.db.password,
   database: env.db.connectionString ? undefined : env.db.database,
   ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
-  max: 10,
+  max: 40,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000
+  connectionTimeoutMillis: 30000
 });
 
 let runtimeSchemaReady;
