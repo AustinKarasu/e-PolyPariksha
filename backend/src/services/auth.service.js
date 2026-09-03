@@ -34,7 +34,7 @@ async function login(identifier, password, context = {}) {
      LEFT JOIN branches b ON b.id = u.branch_id
      WHERE (u.role = 'admin' AND lower(u.email) = lower($1))
         OR (u.role = 'admin' AND u.college_id = $1)
-        OR (u.role = 'student' AND (u.board_roll_no = $1 OR u.college_id = $1 OR u.roll_no = $1))
+        OR (u.role = 'student' AND TRIM(u.board_roll_no) = TRIM($1))
      LIMIT 1`,
     [identifier]
   );
@@ -426,7 +426,11 @@ function normalizeResetRole(role) {
 
 function isDobPassword(dob, password) {
   const parts = dobParts(dob);
-  return parts != null && String(password || '').trim() == `${parts.day}${parts.month}${parts.year}`;
+  if (!parts) return false;
+  const raw = String(password || '').trim();
+  const digitsOnly = raw.replace(/[\/-]/g, '');
+  const expected = `${parts.day}${parts.month}${parts.year}`;
+  return raw === expected || digitsOnly === expected;
 }
 
 function deviceKey(deviceLabel) {
