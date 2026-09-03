@@ -26,3 +26,8 @@ check_*.js
 Thumbs.db
 .vscode/
 .idea/
+
+# Builds & APKs
+dist/
+AppRelease/
+*.apk

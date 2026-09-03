@@ -1,10 +1,10 @@
 {
     "appId": "epolypariksha-hp",
-    "latestVersion": "1.0.2",
-    "latestBuild": 83,
+    "latestVersion": "1.0.3",
+    "latestBuild": 84,
     "mandatory": true,
-    "releaseNotes": "e-PolyPariksha HP update:\n- Connected to live high-availability Vercel backend with Supabase PostgreSQL.\n- Automated email OTP & test notifications via Gmail SMTP.\n- Performance improvements and security enhancements.",
-    "downloadUrl": "https://github.com/AustinKarasu/e-PolyPariksha/releases/download/v1.0.2/epolypariksha-hp-v1.0.2%2B83.apk",
+    "releaseNotes": "e-PolyPariksha HP update v1.0.3:\n- Hardened exam security with double split-screen / multi-window prevention.\n- Fixed question paper PDF loading with exponential backoff retry.\n- Fixed test submission handling with retry resilience.\n- Optimized backend database pooling and query throughput for 30+ concurrent students.",
+    "downloadUrl": "https://github.com/AustinKarasu/e-PolyPariksha/releases/download/v1.0.3/epolypariksha-hp-v1.0.3%2B84.apk",
     "packageName": "in.polyht.polyht_admin",
     "usePlayStore": false,
     "playStoreUrl": ""
