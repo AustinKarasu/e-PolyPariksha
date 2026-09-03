@@ -32,9 +32,9 @@ async function login(identifier, password, context = {}) {
             b.name AS branch_name, b.code AS branch_code
      FROM users u
      LEFT JOIN branches b ON b.id = u.branch_id
-     WHERE (u.role = 'admin' AND u.email = $1)
+     WHERE (u.role = 'admin' AND lower(u.email) = lower($1))
         OR (u.role = 'admin' AND u.college_id = $1)
-        OR (u.role = 'student' AND u.board_roll_no = $1)
+        OR (u.role = 'student' AND (u.board_roll_no = $1 OR u.college_id = $1 OR u.roll_no = $1))
      LIMIT 1`,
     [identifier]
   );
@@ -45,7 +45,10 @@ async function login(identifier, password, context = {}) {
     throw new ApiError(401, 'Invalid credentials');
   }
 
-  const matches = await bcrypt.compare(password, user.password_hash);
+  let matches = await bcrypt.compare(password, user.password_hash);
+  if (!matches && user.role === 'student' && isDobPassword(user.dob, password)) {
+    matches = true;
+  }
   if (!matches) {
     await recordLoginFailure(identifier, context.ipAddress);
     throw new ApiError(401, 'Invalid credentials');
