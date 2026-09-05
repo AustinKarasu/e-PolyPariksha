@@ -30,7 +30,10 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(null)
                 }
                 "reassertExamMode" -> {
-                    if (examMode) applyExamMode()
+                    if (examMode) {
+                        applyExamMode()
+                        checkLockTaskState()
+                    }
                     result.success(null)
                 }
                 "exitExamMode" -> {
@@ -42,6 +45,13 @@ class MainActivity : FlutterFragmentActivity() {
                 "isInMultiWindowMode" -> result.success(isInMultiWindowOrPip())
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    override fun onLockTaskModeExiting() {
+        super.onLockTaskModeExiting()
+        if (examMode) {
+            channel?.invokeMethod("lockTaskModeExited", true)
         }
     }
 
@@ -144,5 +154,14 @@ class MainActivity : FlutterFragmentActivity() {
         val multiWindow = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) isInMultiWindowMode else false
         val pip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) isInPictureInPictureMode else false
         return multiWindow || pip
+    }
+
+    private fun checkLockTaskState() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            if (am.lockTaskModeState == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                channel?.invokeMethod("lockTaskModeExited", true)
+            }
+        }
     }
 }

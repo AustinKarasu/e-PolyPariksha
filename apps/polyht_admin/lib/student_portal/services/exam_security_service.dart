@@ -16,6 +16,9 @@ class ExamSecurityService {
       if (call.method == 'windowFocusChanged' && call.arguments == false) {
         await handler('window_focus_lost');
       }
+      if (call.method == 'lockTaskModeExited') {
+        await handler('unpinned_app');
+      }
     });
   }
 

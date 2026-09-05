@@ -13,6 +13,9 @@ class ExamEvent {
     this.message,
     this.collegeId,
     this.studentEmail,
+    this.semester,
+    this.rollNo,
+    this.boardRollNo,
   });
 
   final int id;
@@ -28,6 +31,9 @@ class ExamEvent {
   final String? message;
   final String? collegeId;
   final String? studentEmail;
+  final int? semester;
+  final String? rollNo;
+  final String? boardRollNo;
 
   factory ExamEvent.fromJson(Map<String, dynamic> json) {
     return ExamEvent(
@@ -44,6 +50,9 @@ class ExamEvent {
       message: json['message'] as String?,
       collegeId: json['college_id'] as String?,
       studentEmail: json['student_email'] as String?,
+      semester: json['semester'] as int?,
+      rollNo: json['roll_no'] as String?,
+      boardRollNo: json['board_roll_no'] as String?,
     );
   }
 }

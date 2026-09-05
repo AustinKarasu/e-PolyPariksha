@@ -9,6 +9,7 @@ import '../models/student_test.dart';
 import '../services/notification_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/test_service.dart';
+import '../services/exam_security_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/update_button.dart';
 import '../widgets/password_strength_indicator.dart';
@@ -577,6 +578,31 @@ class _StudentTestCard extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: test.canStart
                     ? () async {
+                        final inSplit =
+                            await ExamSecurityService().isInMultiWindowMode();
+                        if (inSplit) {
+                          if (context.mounted) {
+                            await showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                icon: const Icon(Icons.splitscreen_rounded,
+                                    size: 48, color: AppTheme.error),
+                                title: const Text('Split-Screen Detected'),
+                                content: const Text(
+                                  'Tests cannot be started in split-screen or multi-window mode.\n\nPlease exit split-screen and open the app in full screen to start your test.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                actions: [
+                                  FilledButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return;
+                        }
                         await Navigator.of(context).push(MaterialPageRoute(
                             builder: (_) => ExamScreen(test: test)));
                         onRefresh();

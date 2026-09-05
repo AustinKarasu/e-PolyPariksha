@@ -51,7 +51,13 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
       _loadCompletedPaper();
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      _securityService.setEventHandler(_logEvent);
+      _securityService.setEventHandler((eventType) async {
+        if (eventType == 'unpinned_app') {
+          await _logEvent('unpinned_app', metadata: {'reason': 'Student unpinned the exam screen'});
+        } else {
+          await _logEvent(eventType);
+        }
+      });
       _startTimer();
       _enterExam();
     }
@@ -206,7 +212,9 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
             // ── Submit button ──
             if (!widget.reviewOnly)
               TextButton.icon(
-                onPressed: _locked ? null : _confirmComplete,
+                onPressed: (_locked || _loading || _pdfPath == null)
+                    ? null
+                    : _confirmComplete,
                 icon: const Icon(Icons.check_circle_outline,
                     color: Colors.white, size: 20),
                 label: const Text('Submit',
@@ -385,11 +393,28 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
       if (await _securityService.isInMultiWindowMode()) {
         await _securityService.exitExamMode();
         if (mounted) {
-          setState(() {
-            _errorMessage =
-                'Close split-screen or picture-in-picture mode before starting the test.';
-            _loading = false;
-          });
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              icon: const Icon(Icons.splitscreen_rounded,
+                  size: 48, color: AppTheme.error),
+              title: const Text('Split-Screen Detected'),
+              content: const Text(
+                'Tests are not allowed in split-screen mode.\n\nPlease close split-screen and reopen the test in full screen.',
+                textAlign: TextAlign.center,
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    if (mounted) Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
         return;
       }
@@ -493,6 +518,15 @@ class _ExamScreenState extends State<ExamScreen> with WidgetsBindingObserver {
 
   Future<void> _complete({bool autoSubmitted = false}) async {
     if (_locked) return;
+    if (_pdfPath == null && !widget.reviewOnly) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active test session to submit.')),
+        );
+        Navigator.of(context).pop();
+      }
+      return;
+    }
     try {
       _heartbeatTimer?.cancel();
       if (autoSubmitted) {
