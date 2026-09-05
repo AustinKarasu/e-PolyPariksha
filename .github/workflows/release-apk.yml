@@ -100,7 +100,7 @@ jobs:
           echo "release_base_url=$RELEASE_BASE_URL" >> "$GITHUB_OUTPUT"
           echo "latest_release_base_url=$LATEST_RELEASE_BASE_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Configure Android signing when secrets exist
+      - name: Configure Android signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -108,17 +108,28 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         shell: bash
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "No Android signing secret configured; building unsigned release APKs."
-            exit 0
-          fi
           for app in apps/polyht_admin; do
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$app/android/release.jks"
-            printf '%s\n' \
-              "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
-              "keyPassword=$ANDROID_KEY_PASSWORD" \
-              "keyAlias=$ANDROID_KEY_ALIAS" \
-              "storeFile=release.jks" > "$app/android/key.properties"
+            if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+              echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$app/android/release.jks"
+              cp "$app/android/release.jks" "$app/android/app/release.jks"
+              printf '%s\n' \
+                "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
+                "keyPassword=$ANDROID_KEY_PASSWORD" \
+                "keyAlias=$ANDROID_KEY_ALIAS" \
+                "storeFile=release.jks" > "$app/android/key.properties"
+              echo "Configured Android release signing from GitHub Secrets for $app."
+            elif [ -f "$app/android/release.jks" ]; then
+              cp "$app/android/release.jks" "$app/android/app/release.jks" 2>/dev/null || true
+              printf '%s\n' \
+                "storePassword=android" \
+                "keyPassword=android" \
+                "keyAlias=androiddebugkey" \
+                "storeFile=release.jks" > "$app/android/key.properties"
+              echo "Configured Android release signing from repository keystore for $app."
+            else
+              echo "ERROR: No release keystore found! Release APK signing must be consistent."
+              exit 1
+            fi
           done
 
       - name: Build e-PolyPariksha HP APK
