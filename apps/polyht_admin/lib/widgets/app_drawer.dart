@@ -5,6 +5,7 @@ import '../config/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../screens/admin_accounts_screen.dart';
+import '../screens/analytics_screen.dart';
 import '../screens/admin_chatbot_screen.dart';
 import '../screens/attempt_reports_screen.dart';
 import '../screens/info_screen.dart';
@@ -23,7 +24,7 @@ class AppDrawer extends StatelessWidget {
     final isPrimaryAdmin = user?.isPrimaryAdmin == true;
     final collegeName = user?.collegeName?.trim().isNotEmpty == true
         ? user!.collegeName!
-        : 'Poly H.T';
+        : 'e-PolyPariksha HP';
 
     return Drawer(
       child: Column(
@@ -100,6 +101,16 @@ class AppDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
+                _DrawerItem(
+                  icon: Icons.analytics_outlined,
+                  label: 'Analytics',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(MaterialPageRoute(
+                        settings: const RouteSettings(name: 'Admin Analytics'),
+                        builder: (_) => const AnalyticsScreen()));
+                  },
+                ),
                 _DrawerItem(
                   icon: Icons.people_outline_rounded,
                   label: 'Student Directory',
@@ -197,7 +208,7 @@ class AppDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Poly H.T v1.0.0',
+              'e-PolyPariksha HP v1.0.0',
               style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context)

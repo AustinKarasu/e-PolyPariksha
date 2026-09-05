@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { imageUpload } = require('../middleware/upload.middleware');
-const { authLimiter } = require('../middleware/security.middleware');
+const { authLimiter, passwordResetLimiter } = require('../middleware/security.middleware');
 const { validate } = require('../middleware/validate.middleware');
 
 router.post(
@@ -13,10 +13,43 @@ router.post(
     body('identifier').trim().notEmpty(),
     body('password').isLength({ min: 6 }),
     body('totpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 }),
+    body('emailOtpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 }),
     body('deviceLabel').optional().trim().isLength({ max: 160 })
   ],
   validate,
   authController.login
+);
+
+router.post(
+  '/register-admin/request-otp',
+  authLimiter,
+  [body('email').isEmail().normalizeEmail()],
+  validate,
+  authController.requestAdminRegistrationOtp
+);
+
+const passwordResetValidation = [
+  body('email').isEmail().normalizeEmail(),
+  body('role').isIn(['admin', 'student'])
+];
+
+router.post('/password-reset/request', passwordResetLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
+router.post(
+  '/password-reset/verify',
+  passwordResetLimiter,
+  [...passwordResetValidation, body('otpCode').trim().isLength({ min: 6, max: 8 })],
+  validate,
+  authController.verifyPasswordReset
+);
+router.post(
+  '/password-reset/complete',
+  passwordResetLimiter,
+  [
+    body('resetToken').trim().isLength({ min: 20 }),
+    body('newPassword').isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  ],
+  validate,
+  authController.completePasswordReset
 );
 
 router.post(
@@ -36,13 +69,18 @@ router.post(
       minUppercase: 1,
       minNumbers: 1,
       minSymbols: 1
-    })
+    }),
+    body('emailOtpCode').trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   authController.registerAdmin
 );
 
 router.get('/me', authenticate, authController.me);
+router.post('/me/email-otp', authenticate, [body('email').isEmail().normalizeEmail()], validate, authController.requestEmailChangeOtp);
+router.post('/me/initial-credentials/otp', authenticate, [body('email').isEmail().normalizeEmail()], validate, authController.requestInitialCredentialsOtp);
+router.post('/me/initial-credentials', authenticate, [body('email').isEmail().normalizeEmail(), body('emailOtpCode').trim().isLength({ min: 6, max: 8 }), body('newPassword').trim().isLength({ min: 8, max: 128 })], validate, authController.completeInitialCredentials);
+router.post('/me/password-otp', authenticate, authController.requestPasswordChangeOtp);
 router.patch(
   '/me',
   authenticate,
@@ -52,6 +90,7 @@ router.patch(
     body('phone').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }),
     body('address').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }),
     body('guardianName').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 120 })
+    ,body('emailOtpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   authController.updateMe
@@ -59,17 +98,17 @@ router.patch(
 router.put('/me/photo', authenticate, imageUpload.single('photo'), authController.updateMyPhoto);
 router.post(
   '/me/password',
-  authenticate,
-  [
-    body('currentPassword').isLength({ min: 6 }),
-    body('newPassword').isStrongPassword({
-      minLength: 8,
-      minLowercase: 1,
+    authenticate,
+    [
+      body('newPassword').isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
       minUppercase: 1,
       minNumbers: 1,
       minSymbols: 1
     }),
-    body('totpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 })
+    body('totpCode').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 6, max: 8 }),
+    body('emailOtpCode').trim().isLength({ min: 6, max: 8 })
   ],
   validate,
   authController.changePassword

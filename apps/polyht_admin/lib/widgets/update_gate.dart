@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/update_service.dart';
 
@@ -14,30 +17,84 @@ class UpdateGate extends StatefulWidget {
 class _UpdateGateState extends State<UpdateGate> {
   final _service = UpdateService();
   AppUpdate? _mandatoryUpdate;
+  String? _checkError;
+  bool _installing = false;
+  Timer? _retryTimer;
 
   @override
   void initState() {
     super.initState();
     _check();
+    _retryTimer = Timer.periodic(const Duration(minutes: 1), (_) => _check());
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _check() async {
-    try {
-      final update = await _service.checkForUpdate();
-      if (mounted) {
-        setState(() {
-          _mandatoryUpdate = update?.mandatory == true ? update : null;
-        });
+    if (_installing || _mandatoryUpdate != null) return;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final update = await _service.checkForUpdate();
+        if (mounted) {
+          setState(() {
+            _mandatoryUpdate = update?.mandatory == true ? update : null;
+            _checkError = null;
+          });
+        }
+        return;
+      } catch (err) {
+        if (mounted) {
+          setState(() => _checkError =
+              'Update check failed. Retrying when network is available.');
+        }
+        if (attempt < 2) {
+          await Future<void>.delayed(const Duration(seconds: 5));
+        }
       }
-    } catch (_) {
-      // Update checks should never block opening the app.
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final update = _mandatoryUpdate;
-    if (update == null) return widget.child;
+    if (update == null) {
+      return Stack(
+        children: [
+          widget.child,
+          if (_checkError != null)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Material(
+                color: Colors.transparent,
+                child: SafeArea(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        _checkError!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
 
     return PopScope(
       canPop: false,
@@ -61,19 +118,60 @@ class _UpdateGateState extends State<UpdateGate> {
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
-                  onPressed: () => _service.openUpdate(update),
-                  icon: Icon(update.usesPlayStore
-                      ? Icons.shop_rounded
-                      : Icons.download_rounded),
-                  label: Text(update.usesPlayStore
-                      ? 'Update on Play Store'
-                      : 'Download ${update.latestVersion}'),
+                  onPressed: _installing ? null : () => _install(update),
+                  icon: _installing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(update.usesPlayStore
+                          ? Icons.shop_rounded
+                          : Icons.download_rounded),
+                  label: Text(_installing
+                      ? 'Downloading...'
+                      : update.usesPlayStore
+                          ? 'Update on Play Store'
+                          : 'Download & Install ${update.latestVersion}'),
                 ),
+                if (!update.usesPlayStore && update.downloadUrl.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _openInBrowser(update),
+                    icon: const Icon(Icons.open_in_browser_rounded),
+                    label: const Text('Download via Browser'),
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _install(AppUpdate update) async {
+    setState(() => _installing = true);
+    try {
+      await _service.openUpdate(update);
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Direct installer unavailable. Opening browser download...'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        await _openInBrowser(update);
+      }
+    } finally {
+      if (mounted) setState(() => _installing = false);
+    }
+  }
+
+  Future<void> _openInBrowser(AppUpdate update) async {
+    if (update.downloadUrl.isEmpty) return;
+    final uri = Uri.parse(update.downloadUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

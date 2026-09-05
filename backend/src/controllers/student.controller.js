@@ -18,6 +18,14 @@ async function updateProfile(req, res, next) {
   }
 }
 
+async function requestEmailChangeOtp(req, res, next) {
+  try {
+    res.json(await studentService.requestStudentEmailChangeOtp(req.user.sub, req.body.email));
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updatePhoto(req, res, next) {
   try {
     const student = await studentService.updateStudentPhoto(req.user.sub, req.file);
@@ -88,6 +96,7 @@ async function adminDeleteStudent(req, res, next) {
 module.exports = {
   getProfile,
   updateProfile,
+  requestEmailChangeOtp,
   updatePhoto,
   listStudents,
   getStudentById,

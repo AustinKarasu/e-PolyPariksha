@@ -84,8 +84,13 @@ async function replacePdf(req, res, next) {
 
 async function removeTest(req, res, next) {
   try {
-    await testService.removeTest(Number(req.params.id), req.user.sub);
-    res.status(204).send();
+    const test = await testService.removeTest(Number(req.params.id), req.user.sub);
+    res.json({
+      test,
+      message: test.cancellation_notified
+        ? 'Test cancelled and eligible users have been notified.'
+        : 'Ended test removed. No cancellation email was sent.'
+    });
   } catch (err) {
     next(err);
   }
@@ -115,6 +120,7 @@ async function downloadAdminPdf(req, res, next) {
 }
 
 function sendPdfDelivery(res, delivery) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   if (delivery.type === 'redirect') {
     return res.redirect(delivery.value);
   }

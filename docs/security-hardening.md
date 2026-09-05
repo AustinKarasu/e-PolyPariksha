@@ -5,7 +5,7 @@ Implemented controls:
 - Bcrypt password hashes.
 - JWT sessions backed by `auth_sessions` for server-side logout/revocation.
 - Role-based authorization for admin and student APIs.
-- Parameterized PostgreSQL/Supabase queries through `pg`, preventing SQL injection.
+- Parameterized PostgreSQL queries through `pg`, preventing SQL injection.
 - Request validation through `express-validator`.
 - Helmet security headers.
 - CORS allowlist through `CORS_ORIGINS`.
@@ -21,7 +21,7 @@ Implemented controls:
 Operational requirements:
 
 - Use HTTPS only.
-- Keep `JWT_SECRET`, DB credentials, and S3 credentials in Vercel/GitHub secrets.
+- Keep `JWT_SECRET`, database credentials, and S3 credentials outside source control.
 - Rotate the initial admin password after first login.
-- Use Supabase pooled PostgreSQL with backups, SSL, and restricted credentials.
+- Use PostgreSQL backups, SSL where applicable, and restricted credentials.
 - Keep APK signing keystore outside Git and store it in GitHub secrets.

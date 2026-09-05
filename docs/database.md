@@ -1,8 +1,8 @@
-# PolyH.T Database
+# e-PolyPariksha HP Database
 
 The schema is in `backend/database/schema.sql`.
 
-The production backend is wired for Supabase PostgreSQL. Supabase is PostgreSQL-based, so the schema uses PostgreSQL features such as `SERIAL`, `CHECK`, `JSONB`, and `ON CONFLICT`.
+The production backend uses PostgreSQL features such as `SERIAL`, `CHECK`, `JSONB`, and `ON CONFLICT`.
 
 ## Main Tables
 

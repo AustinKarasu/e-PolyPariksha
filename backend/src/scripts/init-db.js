@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 async function main() {
-  console.log('Connecting to Supabase PostgreSQL...');
+  console.log('Connecting to PostgreSQL...');
   
   const schemaPath = path.join(__dirname, '..', '..', 'database', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');

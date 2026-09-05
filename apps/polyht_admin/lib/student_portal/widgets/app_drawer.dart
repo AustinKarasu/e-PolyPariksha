@@ -17,7 +17,7 @@ class AppDrawer extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final theme = context.watch<ThemeProvider>();
     final user = auth.user;
-    final collegeName = user?.collegeName?.trim().isNotEmpty == true ? user!.collegeName! : 'Poly H.T';
+    final collegeName = user?.collegeName?.trim().isNotEmpty == true ? user!.collegeName! : 'e-PolyPariksha HP';
 
     return Drawer(
       child: Column(
@@ -155,7 +155,7 @@ class AppDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'PolyH.T Student v1.0.0',
+              'e-PolyPariksha HP Student v1.0.0',
               style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
             ),
           ),

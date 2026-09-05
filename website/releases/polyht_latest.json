@@ -1,11 +1,11 @@
 {
-  "appId": "polyht",
-  "latestVersion": "1.0.53",
-  "latestBuild": 54,
-  "mandatory": true,
-  "releaseNotes": "Required update:\n- Uses the real PolyHT app logo in PDF report headers.\n- Renames AI Reports to Reports and AI ChatBot/AI Help to ChatBot.\n- Keeps professional per-test PDF reports, Excel export, secure exam heartbeat, and India/local notification time fixes.",
-  "downloadUrl": "https://github.com/AustinKarasu/PolyH.T-App/releases/download/v1.0.53/polyht-v1.0.53+54.apk",
-  "packageName": "in.polyht.polyht_admin",
-  "usePlayStore": true,
-  "playStoreUrl": "https://play.google.com/store/apps/details?id=in.polyht.polyht_admin"
+    "appId": "epolypariksha-hp",
+    "latestVersion": "1.0.3",
+    "latestBuild": 89,
+    "mandatory": true,
+    "releaseNotes": "e-PolyPariksha HP update v1.0.3 (Build 89):\n- Fixed Analytics screen loading, data mapping, and parsing resilience.\n- Auto-healing authentication sessions prevent session dropped errors.\n- Added Retry action and layout overflow protection in analytics dashboard.\n- Verified full test suite and clean code analysis.",
+    "downloadUrl": "https://github.com/AustinKarasu/e-PolyPariksha/releases/download/v1.0.3/epolypariksha-hp-v1.0.3%2B89.apk",
+    "packageName": "in.polyht.polyht_admin",
+    "usePlayStore": false,
+    "playStoreUrl": ""
 }

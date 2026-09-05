@@ -53,7 +53,30 @@ class _UpdateButtonState extends State<UpdateButton> {
             FilledButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _service.openUpdate(update);
+                if (!mounted) return;
+                showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const AlertDialog(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(child: Text('Downloading update...')),
+                      ],
+                    ),
+                  ),
+                );
+                final navigator = Navigator.of(context, rootNavigator: true);
+                try {
+                  await _service.openUpdate(update);
+                } finally {
+                  if (mounted) navigator.pop();
+                }
               },
               child: Text(update.actionLabel),
             ),

@@ -20,9 +20,11 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
   final _mobile = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _emailOtp = TextEditingController();
   String? _college = polytechnicColleges.first;
   String? _state = 'Himachal Pradesh';
   bool _obscurePassword = true;
+  bool _sendingOtp = false;
   late final TextEditingController _collegeController;
 
   @override
@@ -39,6 +41,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
     _mobile.dispose();
     _email.dispose();
     _password.dispose();
+    _emailOtp.dispose();
     _collegeController.dispose();
     super.dispose();
   }
@@ -88,6 +91,29 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
                           ),
                           onTap: _pickCollege,
                           validator: (_) => _college == null || _college!.isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _emailOtp,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email OTP',
+                                  prefixIcon: Icon(Icons.mark_email_read_outlined),
+                                ),
+                                validator: (value) => value == null || value.trim().length < 6
+                                    ? 'Enter the email OTP'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            OutlinedButton(
+                              onPressed: _sendingOtp ? null : _requestOtp,
+                              child: Text(_sendingOtp ? 'Sending...' : 'Send OTP'),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
@@ -181,10 +207,32 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
           college: _college!,
           state: _state!,
           password: _password.text,
+          emailOtpCode: _emailOtp.text.trim(),
         );
     if (!mounted || !ok) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Application submitted. Superuser approval is required before sign in.')));
     Navigator.of(context).pop();
+  }
+
+  Future<void> _requestOtp() async {
+    final email = _email.text.trim();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid email first')));
+      return;
+    }
+    setState(() => _sendingOtp = true);
+    try {
+      await context.read<AuthProvider>().requestAdminRegistrationOtp(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to email')));
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _sendingOtp = false);
+    }
   }
 
   Future<void> _pickCollege() async {

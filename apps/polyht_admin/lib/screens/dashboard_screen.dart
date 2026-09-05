@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../services/test_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/update_button.dart';
+import '../widgets/security_bell_button.dart';
 import 'admin_pdf_viewer_screen.dart';
 import 'upload_test_screen.dart';
 
@@ -40,6 +41,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             expandedHeight: 180,
             floating: false,
             pinned: true,
+            centerTitle: true,
+            title: const SecurityBellButton(),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: Container(

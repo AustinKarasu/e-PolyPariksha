@@ -139,10 +139,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                       _AdminTile(
                         admin: admin,
                         canManagePrimary: isPrimaryAdmin,
-                        onPrimary: () async {
-                          await _service.setPrimary(admin.id);
-                          _refresh();
-                        },
+                        onPrimary: () => _makePrimary(admin),
                         onToggle: () async {
                           await _service.setActive(admin.id, !admin.isActive);
                           _refresh();
@@ -280,6 +277,54 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     }
   }
 
+  Future<void> _makePrimary(AdminAccount admin) async {
+    try {
+      await _service.setPrimary(admin.id);
+    } catch (err) {
+      final message = err.toString().replaceFirst('Exception: ', '');
+      if (!message.toLowerCase().contains('otp')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        }
+        return;
+      }
+    }
+    if (!mounted) return;
+    final otpController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Verify primary admin change'),
+        content: TextField(
+          controller: otpController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Email OTP'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Verify')),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      otpController.dispose();
+      return;
+    }
+    try {
+      await _service.setPrimary(admin.id, otpCode: otpController.text.trim());
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${admin.fullName} is now primary')));
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      otpController.dispose();
+    }
+  }
+
   Future<void> _importAdmins() async {
     final result = await FilePicker.platform.pickFiles(
         type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
@@ -344,6 +389,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    final otpController = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -384,6 +430,26 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                       ? 'Minimum 10 characters'
                       : null,
                 ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Your email OTP',
+                    prefixIcon: const Icon(Icons.verified_user_outlined),
+                    suffixIcon: IconButton(
+                      tooltip: 'Send OTP',
+                      icon: const Icon(Icons.send_outlined),
+                      onPressed: () async {
+                        await _service.requestCreateAdminOtp();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your email')));
+                        }
+                      },
+                    ),
+                  ),
+                  validator: (value) => value == null || value.trim().length != 6 ? 'Enter the 6-digit OTP' : null,
+                ),
               ],
             ),
           ),
@@ -399,6 +465,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
                 fullName: nameController.text.trim(),
                 email: emailController.text.trim(),
                 password: passwordController.text,
+                otpCode: otpController.text.trim(),
               );
               if (context.mounted) Navigator.of(context).pop();
               _refresh();
@@ -411,6 +478,7 @@ class _AdminAccountsScreenState extends State<AdminAccountsScreen> {
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    otpController.dispose();
   }
 
   Future<void> _showClearDataDialog() async {

@@ -1,17 +1,22 @@
 package `in`.polyht.polyht_admin
 
 import android.content.res.Configuration
+import android.app.NotificationManager
+import android.content.Context
 import android.os.Build
+import android.media.AudioManager
 import android.view.View
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val channelName = "polyht/exam_security"
     private var channel: MethodChannel? = null
     private var examMode = false
+    private var previousMusicVolume: Int? = null
+    private var previousInterruptionFilter: Int? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -25,7 +30,10 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "reassertExamMode" -> {
-                    if (examMode) applyExamMode()
+                    if (examMode) {
+                        applyExamMode()
+                        checkLockTaskState()
+                    }
                     result.success(null)
                 }
                 "exitExamMode" -> {
@@ -44,6 +52,7 @@ class MainActivity : FlutterActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (!examMode) return
         applyExamMode()
+        checkLockTaskState()
         channel?.invokeMethod("windowFocusChanged", hasFocus)
     }
 
@@ -86,6 +95,7 @@ class MainActivity : FlutterActivity() {
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        silenceDeviceForExam()
     }
 
     @Suppress("DEPRECATION")
@@ -93,6 +103,31 @@ class MainActivity : FlutterActivity() {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        restoreDeviceAudio()
+    }
+
+    private fun silenceDeviceForExam() {
+        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (previousMusicVolume == null) {
+            previousMusicVolume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        }
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+        val notifications = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notifications.isNotificationPolicyAccessGranted) {
+            if (previousInterruptionFilter == null) previousInterruptionFilter = notifications.currentInterruptionFilter
+            notifications.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+        }
+    }
+
+    private fun restoreDeviceAudio() {
+        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        previousMusicVolume?.let { audio.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) }
+        previousMusicVolume = null
+        val notifications = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notifications.isNotificationPolicyAccessGranted) {
+            previousInterruptionFilter?.let { notifications.setInterruptionFilter(it) }
+        }
+        previousInterruptionFilter = null
     }
 
     private fun startPinnedMode() {
@@ -113,5 +148,14 @@ class MainActivity : FlutterActivity() {
         val multiWindow = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) isInMultiWindowMode else false
         val pip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) isInPictureInPictureMode else false
         return multiWindow || pip
+    }
+
+    private fun checkLockTaskState() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            if (am.lockTaskModeState == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                channel?.invokeMethod("lockTaskModeExited", true)
+            }
+        }
     }
 }

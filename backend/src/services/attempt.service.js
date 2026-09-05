@@ -1,16 +1,16 @@
 const { query } = require('../config/db');
 const { ApiError } = require('../utils/api-error');
 
-const criticalEvents = new Set([
-  'app_backgrounded',
-  'app_detached',
-  'app_hidden',
-  'back_blocked',
-  'split_screen_detected',
-  'picture_in_picture_detected',
+const navigationEvents = new Set([
+  'back_navigation_attempt',
+  'home_navigation_attempt',
+  'split_screen_attempt',
+  'picture_in_picture_attempt',
+  'unpinned_app',
   'window_focus_lost'
 ]);
-const warningEvents = new Set(['app_inactive', 'app_resumed', 'time_limit_reached']);
+const warningEvents = new Set(['app_inactive', 'app_resumed', 'window_focus_lost', 'time_limit_reached', 'unpinned_app', ...navigationEvents]);
+const maxNavigationAttempts = 30;
 
 async function startAttempt(testId, user, context = {}) {
   const test = await getAssignedLiveTestForUser(testId, user);
@@ -53,7 +53,7 @@ async function startAttempt(testId, user, context = {}) {
 async function completeAttempt(testId, user, answerNote, context = {}) {
   await getAssignedTestForUser(testId, user);
   const attempt = await getAttemptByStudent(testId, user.sub);
-  if (!attempt) throw new ApiError(404, 'Attempt not found');
+  if (!attempt) throw new ApiError(404, 'No active test attempt was found. Make sure the test was started properly before submitting.');
 
   await query(
     `UPDATE test_attempts
@@ -86,14 +86,54 @@ async function recordStudentEvent(testId, user, eventType, metadata = {}, contex
     return { locked: true };
   }
 
-  if (criticalEvents.has(eventType)) {
-    severity = 'critical';
-    message = metadata.message || 'Student left or attempted to leave secure exam mode.';
-  } else {
-    severity = warningEvents.has(eventType) ? 'warning' : 'info';
+  severity = warningEvents.has(eventType) ? 'warning' : 'info';
+  if (navigationEvents.has(eventType)) {
+    message = metadata.message || 'Student attempted navigation during the examination.';
   }
 
-  if (criticalEvents.has(eventType)) {
+  await recordEvent({
+    attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
+    eventType, severity, message, metadata, context
+  });
+
+  if (navigationEvents.has(eventType)) {
+    const countRows = await query(
+      'SELECT COUNT(*)::INT AS count FROM exam_events WHERE attempt_id = $1 AND event_type = $2',
+      [attempt.id, eventType]
+    );
+    const attempts = Number(countRows[0]?.count || 0);
+    if (attempts > maxNavigationAttempts) {
+      const lockMessage = `${eventType.replace(/_/g, ' ')} exceeded ${maxNavigationAttempts} attempts.`;
+      await query(
+        `UPDATE test_attempts
+         SET last_seen_at = CURRENT_TIMESTAMP, status = 'blocked', blocked_reason = $1, blocked_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [lockMessage, attempt.id]
+      );
+      return { locked: true, attempts };
+    }
+    await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
+    return { locked: false, attempts };
+  }
+
+  if (eventType === 'unpinned_app') {
+    severity = 'critical';
+    message = metadata.message || 'Security Alert: Student unpinned the app (exited pinned exam mode).';
+    await query(
+      `UPDATE test_attempts
+       SET last_seen_at = CURRENT_TIMESTAMP, status = 'blocked',
+           blocked_reason = $1, blocked_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      ['Student unpinned the exam screen during the test.', attempt.id]
+    );
+    await recordEvent({
+      attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
+      eventType, severity, message, metadata, context
+    });
+    return { locked: true };
+  }
+
+  if (eventType === 'app_detached') {
     await query(
       `UPDATE test_attempts
        SET last_seen_at = CURRENT_TIMESTAMP,
@@ -107,12 +147,7 @@ async function recordStudentEvent(testId, user, eventType, metadata = {}, contex
     await query('UPDATE test_attempts SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [attempt.id]);
   }
 
-  await recordEvent({
-    attemptId: attempt.id, testId, studentId: user.sub, branchId: attempt.branch_id,
-    eventType, severity, message, metadata, context
-  });
-
-  return { locked: criticalEvents.has(eventType) };
+  return { locked: eventType === 'app_detached' };
 }
 
 async function recordEvent({ attemptId, testId, studentId, branchId, eventType, severity = 'info', message = null, metadata = null, context = {} }) {
@@ -133,10 +168,6 @@ async function isPrimaryAdmin(adminId) {
 }
 
 async function listEvents(filters = {}, adminUser) {
-  if (adminUser?.role === 'admin' && filters.reportFallback !== 'true') {
-    const primary = await isPrimaryAdmin(adminUser.sub);
-    if (!primary) throw new ApiError(403, 'Only the superuser can view logs');
-  }
   const conditions = [];
   const params = [];
   let idx = 1;
@@ -148,6 +179,7 @@ async function listEvents(filters = {}, adminUser) {
   if (filters.branchId) { conditions.push(`e.branch_id = $${idx++}`); params.push(filters.branchId); }
   if (filters.testId) { conditions.push(`e.test_id = $${idx++}`); params.push(filters.testId); }
   if (filters.studentId) { conditions.push(`e.student_id = $${idx++}`); params.push(filters.studentId); }
+  if (filters.severity) { conditions.push(`e.severity = $${idx++}`); params.push(filters.severity); }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = Math.min(Number(filters.limit || 100), 500);
@@ -155,7 +187,9 @@ async function listEvents(filters = {}, adminUser) {
   return query(
     `SELECT e.id, e.attempt_id, e.test_id, e.student_id, e.branch_id, e.event_type,
             e.severity, e.message, e.metadata, e.ip_address, e.user_agent, e.created_at,
-            u.full_name AS student_name, u.college_id, b.name AS branch_name, b.code AS branch_code,
+            u.full_name AS student_name, u.email AS student_email, u.college_id,
+            u.semester, u.roll_no, u.board_roll_no,
+            b.name AS branch_name, b.code AS branch_code,
             t.title AS test_title
      FROM exam_events e
      JOIN users u ON u.id = e.student_id
@@ -169,10 +203,6 @@ async function listEvents(filters = {}, adminUser) {
 }
 
 async function listLockedAttempts(filters = {}, adminUser) {
-  if (adminUser?.role === 'admin') {
-    const primary = await isPrimaryAdmin(adminUser.sub);
-    if (!primary) throw new ApiError(403, 'Only the superuser can view logs');
-  }
   const conditions = ["a.status = 'blocked'"];
   const params = [];
   let idx = 1;
@@ -223,7 +253,7 @@ async function listAttemptReports(filters = {}, adminUser) {
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = Math.min(Number(filters.limit || 500), 1000);
-  const criticalTypes = Array.from(criticalEvents);
+  const criticalTypes = Array.from(navigationEvents);
 
   const reports = await query(
     `SELECT a.id AS attempt_id, a.status, a.started_at, a.last_seen_at, a.completed_at,
@@ -387,7 +417,10 @@ async function getAssignedLiveTestForUser(testId, user) {
 
 async function getAssignedTestForUser(testId, user) {
   const rows = await query(
-    `SELECT * FROM tests
+    `SELECT id, title, branch_id, semester, pdf_path, pdf_original_name, pdf_mime_type, pdf_size,
+            scheduled_start, scheduled_end, time_limit_minutes, is_active, created_by,
+            created_at, updated_at, deleted_at
+     FROM tests
      WHERE id = $1 AND branch_id = $2 AND semester = $3
        AND ($4::int IS NULL OR created_by = $4)
      LIMIT 1`,

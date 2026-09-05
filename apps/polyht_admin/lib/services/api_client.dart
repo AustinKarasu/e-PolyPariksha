@@ -2,14 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../config/api_config.dart';
 import 'token_storage.dart';
 
 class ApiClient {
-  ApiClient({TokenStorage? tokenStorage}) : _tokenStorage = tokenStorage ?? TokenStorage();
+  ApiClient({TokenStorage? tokenStorage})
+      : _tokenStorage = tokenStorage ?? TokenStorage();
 
+  static final http.Client _client = http.Client();
   final TokenStorage _tokenStorage;
 
   Future<Map<String, String>> _headers({bool jsonBody = true}) async {
@@ -21,7 +24,7 @@ class ApiClient {
   }
 
   Future<dynamic> get(String path) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: await _headers(),
     );
@@ -29,7 +32,7 @@ class ApiClient {
   }
 
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: await _headers(),
       body: jsonEncode(body),
@@ -38,7 +41,7 @@ class ApiClient {
   }
 
   Future<dynamic> postEmpty(String path) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: await _headers(),
     );
@@ -46,7 +49,7 @@ class ApiClient {
   }
 
   Future<void> delete(String path) async {
-    final response = await http.delete(
+    final response = await _client.delete(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: await _headers(),
     );
@@ -56,7 +59,7 @@ class ApiClient {
   }
 
   Future<dynamic> patch(String path, Map<String, dynamic> body) async {
-    final response = await http.patch(
+    final response = await _client.patch(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: await _headers(),
       body: jsonEncode(body),
@@ -75,7 +78,8 @@ class ApiClient {
     List<int>? pdfBytes,
     required String pdfName,
   }) async {
-    final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/tests'));
+    final request =
+        http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/tests'));
     request.headers.addAll(await _headers(jsonBody: false));
     request.fields.addAll({
       'title': title,
@@ -85,7 +89,8 @@ class ApiClient {
       'scheduledEnd': scheduledEnd.toUtc().toIso8601String(),
       'timeLimitMinutes': '$timeLimitMinutes',
     });
-    request.files.add(await _multipartFile('pdf', path: pdfPath, bytes: pdfBytes, filename: pdfName));
+    request.files.add(await _multipartFile('pdf',
+        path: pdfPath, bytes: pdfBytes, filename: pdfName));
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
@@ -98,9 +103,11 @@ class ApiClient {
     List<int>? pdfBytes,
     required String pdfName,
   }) async {
-    final request = http.MultipartRequest('PUT', Uri.parse('${ApiConfig.baseUrl}/tests/$testId/pdf'));
+    final request = http.MultipartRequest(
+        'PUT', Uri.parse('${ApiConfig.baseUrl}/tests/$testId/pdf'));
     request.headers.addAll(await _headers(jsonBody: false));
-    request.files.add(await _multipartFile('pdf', path: pdfPath, bytes: pdfBytes, filename: pdfName));
+    request.files.add(await _multipartFile('pdf',
+        path: pdfPath, bytes: pdfBytes, filename: pdfName));
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
@@ -108,7 +115,7 @@ class ApiClient {
   }
 
   Future<String> downloadPdf(int testId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${ApiConfig.baseUrl}/tests/$testId/admin/pdf'),
       headers: {
         ...await _headers(jsonBody: false),
@@ -120,7 +127,8 @@ class ApiClient {
     }
     _ensurePdfResponse(response);
     final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/polyht_admin_test_${testId}_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final file = File(
+        '${dir.path}/polyht_admin_test_${testId}_${DateTime.now().millisecondsSinceEpoch}.pdf');
     await file.writeAsBytes(response.bodyBytes, flush: true);
     return file.path;
   }
@@ -131,9 +139,11 @@ class ApiClient {
     List<int>? imageBytes,
     required String imageName,
   }) async {
-    final request = http.MultipartRequest('PUT', Uri.parse('${ApiConfig.baseUrl}$path'));
+    final request =
+        http.MultipartRequest('PUT', Uri.parse('${ApiConfig.baseUrl}$path'));
     request.headers.addAll(await _headers(jsonBody: false));
-    request.files.add(await _multipartFile('photo', path: imagePath, bytes: imageBytes, filename: imageName));
+    request.files.add(await _multipartFile('photo',
+        path: imagePath, bytes: imageBytes, filename: imageName));
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     return _decode(response);
@@ -145,13 +155,27 @@ class ApiClient {
     List<int>? bytes,
     required String filename,
   }) async {
+    final contentType = _contentTypeFor(filename);
     if (bytes != null) {
-      return http.MultipartFile.fromBytes(field, bytes, filename: filename);
+      return http.MultipartFile.fromBytes(field, bytes,
+          filename: filename, contentType: contentType);
     }
     if (path != null) {
-      return http.MultipartFile.fromPath(field, path, filename: filename);
+      return http.MultipartFile.fromPath(field, path,
+          filename: filename, contentType: contentType);
     }
     throw Exception('No file selected');
+  }
+
+  MediaType? _contentTypeFor(String filename) {
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.pdf')) return MediaType('application', 'pdf');
+    if (lower.endsWith('.png')) return MediaType('image', 'png');
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lower.endsWith('.webp')) return MediaType('image', 'webp');
+    return null;
   }
 
   dynamic _decode(http.Response response) {
@@ -172,14 +196,19 @@ class ApiClient {
   }
 
   String _messageFromBody(dynamic body) {
-    if (body is Map && body['message'] != null) return body['message'].toString();
+    if (body is Map && body['message'] != null) {
+      return body['message'].toString();
+    }
     if (body is String && body.trim().isNotEmpty) {
       final text = body.trim();
       final lower = text.toLowerCase();
       if (lower.startsWith('<!doctype') || lower.startsWith('<html')) {
         return 'The server route is not available yet. Please try again after the backend deployment finishes.';
       }
-      if (lower.startsWith('forbidden') || lower.contains('bom1::') || lower.contains('sfo1::') || lower.contains('iad1::')) {
+      if (lower.startsWith('forbidden') ||
+          lower.contains('bom1::') ||
+          lower.contains('sfo1::') ||
+          lower.contains('iad1::')) {
         return 'Upload was blocked before it reached the app server. Use a PDF under 4 MB or re-export/compress the PDF, then try again.';
       }
       return text.length > 240 ? '${text.substring(0, 240)}...' : text;
@@ -195,7 +224,9 @@ class ApiClient {
         bytes[1] == 0x50 &&
         bytes[2] == 0x44 &&
         bytes[3] == 0x46;
-    if (contentType.toLowerCase().contains('application/pdf') || hasPdfHeader) return;
+    if (contentType.toLowerCase().contains('application/pdf') || hasPdfHeader) {
+      return;
+    }
 
     final body = _decodeBody(response);
     throw Exception(_messageFromBody(body));

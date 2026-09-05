@@ -1,4 +1,4 @@
-# PolyH.T App Release Flow
+# e-PolyPariksha HP App Release Flow
 
 ## GitHub Variables
 
@@ -27,9 +27,9 @@ base64 -w 0 release.jks
 1. Open GitHub Actions.
 2. Run `Release Apps`.
 3. Enter a new `versionName` and a higher `buildNumber`.
-4. The workflow builds one combined Android APK from `apps/polyht_admin`, creates a GitHub Release, attaches the APK plus unsigned iOS `.ipa` artifact, and publishes:
-   - `/releases/polyht_latest.json`
-   - one combined `polyht-v<version>+<build>.apk` file
+4. The workflow builds one combined Android APK from `apps/e-PolyPariksha HP_admin`, creates a GitHub Release, attaches the APK plus unsigned iOS `.ipa` artifact, and publishes:
+   - `/releases/e-PolyPariksha HP_latest.json`
+   - one combined `e-PolyPariksha HP-v<version>+<build>.apk` file
 
 The iOS artifacts are unsigned because Apple requires a macOS signing identity and provisioning profile for device-installable `.ipa` files. Add Apple signing secrets and a signed export step before using the iOS files for normal App Store/TestFlight/device distribution.
 

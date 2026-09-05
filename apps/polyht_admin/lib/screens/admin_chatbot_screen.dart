@@ -16,7 +16,7 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
     const _ChatMessage(
       fromUser: false,
       text:
-          'Hello. I can help with Poly H.T app workflows, admin accounts, student accounts, Excel import, tests, security logs, passwords, and release updates.',
+          'Hello. I can help with e-PolyPariksha HP app workflows, admin accounts, student accounts, Excel import, tests, security logs, passwords, and release updates.',
     ),
   ];
 
@@ -117,7 +117,7 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
   String _answer(String question) {
     final q = _normalize(question);
     if (q.isEmpty) {
-      return 'Please enter a Poly H.T, admin, or student-related question and I will help.';
+      return 'Please enter a e-PolyPariksha HP, admin, or student-related question and I will help.';
     }
     var bestScore = 0;
     _Faq? best;
@@ -138,7 +138,7 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
     }
     if (best != null && bestScore > 0) return best.answer;
     if (!_isAppRelated(q)) {
-      return 'I can only help with Poly H.T app, admin, and student-related queries. Please ask about accounts, approvals, Excel import, student records, tests, PDFs, security logs, passwords, updates, or login.';
+      return 'I can only help with e-PolyPariksha HP app, admin, and student-related queries. Please ask about accounts, approvals, Excel import, student records, tests, PDFs, security logs, passwords, updates, or login.';
     }
     return 'I can help with that area, but I need a little more detail. Please ask specifically about Excel import, board roll number login, student fields, admin approvals, tests, PDFs, security logs, clearing data, updates, or account passwords.';
   }
@@ -239,7 +239,7 @@ const _faqs = <_Faq>[
   _Faq(
       question: 'Hello',
       answer:
-          'Hello. I can help with Poly H.T app, admin, and student workflows. Please ask about accounts, approvals, Excel import, tests, security logs, updates, or login.',
+          'Hello. I can help with e-PolyPariksha HP app, admin, and student workflows. Please ask about accounts, approvals, Excel import, tests, security logs, updates, or login.',
       keywords: ['hello', 'hi', 'hey', 'good morning', 'good evening']),
   _Faq(
       question: 'How do I add students using Excel?',
@@ -446,7 +446,7 @@ const _faqs = <_Faq>[
   _Faq(
       question: 'How do I update the app?',
       answer:
-          'The update prompt opens the Poly H.T Play Store page when a Play Store build is available. GitHub release APKs remain available for direct installs.',
+          'The update prompt opens the e-PolyPariksha HP Play Store page when a Play Store build is available. GitHub release APKs remain available for direct installs.',
       keywords: ['update app', 'latest apk', 'play store']),
   _Faq(
       question: 'Why do I see server route not available?',
@@ -461,8 +461,8 @@ const _faqs = <_Faq>[
   _Faq(
       question: 'What is the superuser email?',
       answer:
-          'The permanent superuser is admin@gpkangra.edu. It is marked primary when the backend schema guard runs.',
-      keywords: ['superuser email', 'admin@gpkangra.edu']),
+          'The permanent superuser is admin@gpkangra.gov.in. It is marked primary when the backend schema guard runs.',
+      keywords: ['superuser email', 'admin@gpkangra.gov.in']),
   _Faq(
       question: 'Can the primary admin be deactivated?',
       answer:
@@ -491,7 +491,7 @@ const _faqs = <_Faq>[
   _Faq(
       question: 'How do I verify backend health?',
       answer:
-          'Open the backend /health endpoint. It should return JSON with service polyht-api.',
+          'Open the backend /health endpoint. It should return JSON with service e-PolyPariksha HP-api.',
       keywords: ['backend health']),
   _Faq(
       question: 'What happens after admin application approval?',
@@ -510,6 +510,6 @@ const _faqs = <_Faq>[
   _Faq(
       question: 'Can I ask this assistant anything?',
       answer:
-          'This assistant is a local FAQ helper for Poly H.T workflows. It does not send data outside the app and does not require an API key.',
+          'This assistant is a local FAQ helper for e-PolyPariksha HP workflows. It does not send data outside the app and does not require an API key.',
       keywords: ['assistant', 'chatbot', 'ai']),
 ];

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/token_storage.dart';
+import '../../services/biometric_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final _authService = AuthService();
@@ -11,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   AppUser? user;
   bool isLoading = true;
   bool requiresTwoFactor = false;
+  bool requiresCredentialSetup = false;
   String? error;
 
   bool get isAuthenticated => user != null;
@@ -18,20 +20,30 @@ class AuthProvider extends ChangeNotifier {
   Future<void> restoreSession() async {
     final token = await _tokenStorage.readToken();
     if (token != null) {
+      final biometrics = BiometricService();
+      if (await biometrics.enabled(true) && !await biometrics.authenticate()) {
+        await _tokenStorage.clear();
+        isLoading = false;
+        notifyListeners();
+        return;
+      }
       try {
         user = await _authService.me();
         requiresTwoFactor = false;
+        requiresCredentialSetup = user?.mustChangeCredentials == true;
       } catch (_) {
         await _tokenStorage.clear();
         user = null;
         requiresTwoFactor = false;
+        requiresCredentialSetup = false;
       }
     }
     isLoading = false;
     notifyListeners();
   }
 
-  Future<void> login(String identifier, String password, {String? totpCode}) async {
+  Future<void> login(String identifier, String password,
+      {String? totpCode}) async {
     isLoading = true;
     error = null;
     if (totpCode != null && totpCode.trim().isNotEmpty) {
@@ -41,9 +53,13 @@ class AuthProvider extends ChangeNotifier {
     try {
       user = await _authService.login(identifier, password, totpCode: totpCode);
       requiresTwoFactor = false;
+      requiresCredentialSetup = user?.mustChangeCredentials == true;
     } on TwoFactorRequiredException catch (err) {
       requiresTwoFactor = true;
       error = err.toString();
+    } on CredentialSetupRequiredException {
+      requiresCredentialSetup = true;
+      user = await _authService.me();
     } catch (err) {
       error = err.toString();
     } finally {
@@ -66,6 +82,7 @@ class AuthProvider extends ChangeNotifier {
     String? phone,
     String? guardianName,
     String? address,
+    String? emailOtpCode,
   }) async {
     user = await _authService.updateProfile(
       fullName: fullName,
@@ -73,9 +90,29 @@ class AuthProvider extends ChangeNotifier {
       phone: phone,
       guardianName: guardianName,
       address: address,
+      emailOtpCode: emailOtpCode,
     );
     notifyListeners();
   }
+
+  Future<void> requestEmailChangeOtp(String email) =>
+      _authService.requestEmailChangeOtp(email);
+  Future<void> requestInitialCredentialsOtp(String email) =>
+      _authService.requestInitialCredentialsOtp(email);
+  Future<void> completeInitialCredentials(
+      String email, String otp, String password) async {
+    user = await _authService.completeInitialCredentials(email, otp, password);
+    requiresCredentialSetup = false;
+    notifyListeners();
+  }
+
+  Future<void> requestPasswordReset(String email, String role) =>
+      _authService.requestPasswordReset(email, role);
+  Future<String> verifyPasswordReset(
+          String email, String role, String otpCode) =>
+      _authService.verifyPasswordReset(email, role, otpCode);
+  Future<void> completePasswordReset(String resetToken, String newPassword) =>
+      _authService.completePasswordReset(resetToken, newPassword);
 
   Future<void> uploadProfilePhoto({
     String? imagePath,
@@ -91,18 +128,22 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> changePassword({
-    required String currentPassword,
     required String newPassword,
     String? totpCode,
+    required String emailOtpCode,
   }) async {
     await _authService.changePassword(
-      currentPassword: currentPassword,
       newPassword: newPassword,
       totpCode: totpCode,
+      emailOtpCode: emailOtpCode,
     );
   }
 
-  Future<Map<String, dynamic>> setupTwoFactor() => _authService.setupTwoFactor();
+  Future<void> requestPasswordChangeOtp() =>
+      _authService.requestPasswordChangeOtp();
+
+  Future<Map<String, dynamic>> setupTwoFactor() =>
+      _authService.setupTwoFactor();
 
   Future<void> enableTwoFactor(String code) async {
     user = await _authService.enableTwoFactor(code);

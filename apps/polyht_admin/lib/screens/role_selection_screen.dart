@@ -63,7 +63,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'Poly H.T',
+                      'e-PolyPariksha HP',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,

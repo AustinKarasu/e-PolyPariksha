@@ -5,6 +5,7 @@ async function login(req, res, next) {
     const result = await authService.login(req.body.identifier, req.body.password, {
       deviceLabel: req.body.deviceLabel,
       totpCode: req.body.totpCode,
+      emailOtpCode: req.body.emailOtpCode,
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
     });
@@ -32,6 +33,44 @@ async function registerAdmin(req, res, next) {
   }
 }
 
+async function requestAdminRegistrationOtp(req, res, next) {
+  try {
+    const result = await authService.requestAdminRegistrationOtp(req.body.email);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function requestEmailChangeOtp(req, res, next) {
+  try {
+    res.json(await authService.requestEmailChangeOtp(req.user.sub, req.body.email));
+  } catch (err) {
+    next(err);
+  }
+}
+async function requestInitialCredentialsOtp(req, res, next) { try { res.json(await authService.requestInitialCredentialsOtp(req.user.sub, req.body.email)); } catch (err) { next(err); } }
+async function completeInitialCredentials(req, res, next) { try { res.json({ user: await authService.completeInitialCredentials(req.user.sub, req.body) }); } catch (err) { next(err); } }
+
+async function requestPasswordChangeOtp(req, res, next) {
+  try { res.json(await authService.requestPasswordChangeOtp(req.user.sub)); } catch (err) { next(err); }
+}
+
+async function requestPasswordReset(req, res, next) {
+  try { res.json(await authService.requestPasswordReset(req.body.email, req.body.role)); } catch (err) { next(err); }
+}
+
+async function verifyPasswordReset(req, res, next) {
+  try { res.json(await authService.verifyPasswordReset(req.body.email, req.body.role, req.body.otpCode)); } catch (err) { next(err); }
+}
+
+async function completePasswordReset(req, res, next) {
+  try {
+    await authService.completePasswordReset(req.body.resetToken, req.body.newPassword);
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
 async function updateMe(req, res, next) {
   try {
     const user = await authService.updateCurrentUser(req.user.sub, req.body);
@@ -53,9 +92,9 @@ async function updateMyPhoto(req, res, next) {
 async function changePassword(req, res, next) {
   try {
     await authService.changeCurrentUserPassword(req.user.sub, {
-      currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
-      totpCode: req.body.totpCode
+      totpCode: req.body.totpCode,
+      emailOtpCode: req.body.emailOtpCode
     });
     res.status(204).send();
   } catch (err) {
@@ -101,6 +140,14 @@ async function logout(req, res, next) {
 
 module.exports = {
   login,
+  requestAdminRegistrationOtp,
+  requestEmailChangeOtp,
+  requestInitialCredentialsOtp,
+  completeInitialCredentials,
+  requestPasswordChangeOtp,
+  requestPasswordReset,
+  verifyPasswordReset,
+  completePasswordReset,
   registerAdmin,
   me,
   updateMe,
