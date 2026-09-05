@@ -48,17 +48,11 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    override fun onLockTaskModeExiting() {
-        super.onLockTaskModeExiting()
-        if (examMode) {
-            channel?.invokeMethod("lockTaskModeExited", true)
-        }
-    }
-
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!examMode) return
         applyExamMode()
+        checkLockTaskState()
         channel?.invokeMethod("windowFocusChanged", hasFocus)
     }
 
