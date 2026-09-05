@@ -70,64 +70,75 @@ async function listAppErrors(adminUser, { limit = 50 } = {}) {
 }
 
 async function analyticsSummary(adminUser) {
-  const primary = adminUser?.sub ? await isPrimaryAdmin(adminUser.sub) : false;
-  const params = [];
-  let adminScope = '';
-  if (adminUser?.sub && !primary) {
-    params.push(adminUser.sub);
-    adminScope = 'AND t.created_by = $1';
+  try {
+    const primary = adminUser?.sub ? await isPrimaryAdmin(adminUser.sub).catch(() => false) : false;
+    const params = [];
+    let adminScope = '';
+    if (adminUser?.sub && !primary) {
+      params.push(adminUser.sub);
+      adminScope = 'AND t.created_by = $1';
+    }
+
+    const testsToday = await query(
+      `SELECT COUNT(*)::INT AS count
+       FROM tests t
+       WHERE t.deleted_at IS NULL
+         AND t.scheduled_start::date = CURRENT_DATE
+         ${adminScope}`,
+      params
+    ).catch(() => [{ count: 0 }]);
+
+    const attemptsToday = await query(
+      `SELECT COUNT(*)::INT AS count
+       FROM test_attempts a
+       JOIN tests t ON t.id = a.test_id
+       WHERE a.started_at::date = CURRENT_DATE
+         ${adminScope}`,
+      params
+    ).catch(() => [{ count: 0 }]);
+
+    const usersParams = [];
+    let usersScope = '';
+    if (adminUser?.sub && !primary) {
+      usersParams.push(adminUser.sub);
+      usersScope = 'AND (created_by_admin_id = $1 OR id = $1)';
+    }
+    const totalUsers = await query(
+      `SELECT COUNT(*)::INT AS count
+       FROM users
+       WHERE is_active = true
+         AND role IN ('student', 'admin')
+         ${usersScope}`,
+      usersParams
+    ).catch(() => [{ count: 0 }]);
+
+    const errorRows = await query(
+      `SELECT
+         COUNT(*) FILTER (WHERE severity = 'error')::INT AS errors,
+         COUNT(*) FILTER (WHERE severity = 'crash')::INT AS crashes
+       FROM app_error_reports
+       WHERE created_at >= CURRENT_DATE`
+    ).catch(() => [{ errors: 0, crashes: 0 }]);
+
+    const recent = await listAppErrors(adminUser, { limit: 25 }).catch(() => []);
+    return {
+      tests_conducted_today: testsToday[0]?.count || 0,
+      user_attempts_today: attemptsToday[0]?.count || 0,
+      total_users: totalUsers[0]?.count || 0,
+      app_errors_today: errorRows[0]?.errors || 0,
+      crash_reports_today: errorRows[0]?.crashes || 0,
+      recent_reports: recent || []
+    };
+  } catch (_err) {
+    return {
+      tests_conducted_today: 0,
+      user_attempts_today: 0,
+      total_users: 0,
+      app_errors_today: 0,
+      crash_reports_today: 0,
+      recent_reports: []
+    };
   }
-
-  const testsToday = await query(
-    `SELECT COUNT(*)::INT AS count
-     FROM tests t
-     WHERE t.deleted_at IS NULL
-       AND t.scheduled_start::date = CURRENT_DATE
-       ${adminScope}`,
-    params
-  );
-
-  const attemptsToday = await query(
-    `SELECT COUNT(*)::INT AS count
-     FROM test_attempts a
-     JOIN tests t ON t.id = a.test_id
-     WHERE a.started_at::date = CURRENT_DATE
-       ${adminScope}`,
-    params
-  );
-
-  const usersParams = [];
-  let usersScope = '';
-  if (adminUser?.sub && !primary) {
-    usersParams.push(adminUser.sub);
-    usersScope = 'AND (created_by_admin_id = $1 OR id = $1)';
-  }
-  const totalUsers = await query(
-    `SELECT COUNT(*)::INT AS count
-     FROM users
-     WHERE is_active = true
-       AND role IN ('student', 'admin')
-       ${usersScope}`,
-    usersParams
-  );
-
-  const errorRows = await query(
-    `SELECT
-       COUNT(*) FILTER (WHERE severity = 'error')::INT AS errors,
-       COUNT(*) FILTER (WHERE severity = 'crash')::INT AS crashes
-     FROM app_error_reports
-     WHERE created_at >= CURRENT_DATE`
-  );
-
-  const recent = await listAppErrors(adminUser, { limit: 25 });
-  return {
-    tests_conducted_today: testsToday[0]?.count || 0,
-    user_attempts_today: attemptsToday[0]?.count || 0,
-    total_users: totalUsers[0]?.count || 0,
-    app_errors_today: errorRows[0]?.errors || 0,
-    crash_reports_today: errorRows[0]?.crashes || 0,
-    recent_reports: recent
-  };
 }
 
 async function isPrimaryAdmin(adminId) {

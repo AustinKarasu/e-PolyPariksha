@@ -16,15 +16,31 @@ class AdminAnalytics {
   final List<AppErrorReport> recentReports;
 
   factory AdminAnalytics.fromJson(Map<String, dynamic> json) {
+    int parseNum(dynamic val) {
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val) ?? 0;
+      return 0;
+    }
+
+    final rawReports = json['recent_reports'];
+    final List<AppErrorReport> reports = [];
+    if (rawReports is List) {
+      for (final item in rawReports) {
+        if (item is Map) {
+          try {
+            reports.add(AppErrorReport.fromJson(Map<String, dynamic>.from(item)));
+          } catch (_) {}
+        }
+      }
+    }
+
     return AdminAnalytics(
-      testsConductedToday: json['tests_conducted_today'] as int? ?? 0,
-      userAttemptsToday: json['user_attempts_today'] as int? ?? 0,
-      totalUsers: json['total_users'] as int? ?? 0,
-      appErrorsToday: json['app_errors_today'] as int? ?? 0,
-      crashReportsToday: json['crash_reports_today'] as int? ?? 0,
-      recentReports: ((json['recent_reports'] as List?) ?? [])
-          .map((item) => AppErrorReport.fromJson(item as Map<String, dynamic>))
-          .toList(),
+      testsConductedToday: parseNum(json['tests_conducted_today']),
+      userAttemptsToday: parseNum(json['user_attempts_today']),
+      totalUsers: parseNum(json['total_users']),
+      appErrorsToday: parseNum(json['app_errors_today']),
+      crashReportsToday: parseNum(json['crash_reports_today']),
+      recentReports: reports,
     );
   }
 }
@@ -69,24 +85,40 @@ class AppErrorReport {
   final String? branchName;
 
   factory AppErrorReport.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    final rawDate = json['created_at'];
+    if (rawDate is String) {
+      parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
+
+    int parsedId = 0;
+    final rawId = json['id'];
+    if (rawId is num) {
+      parsedId = rawId.toInt();
+    } else if (rawId is String) {
+      parsedId = int.tryParse(rawId) ?? 0;
+    }
+
     return AppErrorReport(
-      id: json['id'] as int,
-      severity: json['severity'] as String? ?? 'error',
-      source: json['source'] as String?,
-      page: json['page'] as String?,
-      message: json['message'] as String? ?? 'No error message recorded',
-      stackTrace: json['stack_trace'] as String?,
-      devicePlatform: json['device_platform'] as String?,
-      deviceModel: json['device_model'] as String?,
-      appVersion: json['app_version'] as String?,
-      appBuild: json['app_build'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      fullName: json['full_name'] as String?,
-      email: json['email'] as String?,
-      collegeName: json['college_name'] as String?,
-      phone: json['phone'] as String?,
-      role: json['role'] as String?,
-      branchName: json['branch_name'] as String?,
+      id: parsedId,
+      severity: json['severity']?.toString() ?? 'error',
+      source: json['source']?.toString(),
+      page: json['page']?.toString(),
+      message: json['message']?.toString() ?? 'No error message recorded',
+      stackTrace: json['stack_trace']?.toString(),
+      devicePlatform: json['device_platform']?.toString(),
+      deviceModel: json['device_model']?.toString(),
+      appVersion: json['app_version']?.toString(),
+      appBuild: json['app_build']?.toString(),
+      createdAt: parsedDate,
+      fullName: json['full_name']?.toString(),
+      email: json['email']?.toString(),
+      collegeName: json['college_name']?.toString(),
+      phone: json['phone']?.toString(),
+      role: json['role']?.toString(),
+      branchName: json['branch_name']?.toString(),
     );
   }
 }

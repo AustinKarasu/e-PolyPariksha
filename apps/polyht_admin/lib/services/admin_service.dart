@@ -80,14 +80,25 @@ class AdminService {
 
   Future<AdminAnalytics> fetchAnalytics() async {
     final data = await _apiClient.get('/admins/analytics');
-    return AdminAnalytics.fromJson(data['analytics'] as Map<String, dynamic>);
+    if (data is Map) {
+      final raw = data['analytics'] ?? data;
+      if (raw is Map) {
+        return AdminAnalytics.fromJson(Map<String, dynamic>.from(raw));
+      }
+    }
+    throw Exception('Failed to load analytics: invalid response format');
   }
 
   Future<List<AppErrorReport>> fetchAppErrors({int limit = 50}) async {
     final data = await _apiClient.get('/admins/app-errors?limit=$limit');
-    return (data['reports'] as List)
-        .map((item) => AppErrorReport.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final reportsRaw = data is Map ? data['reports'] : null;
+    if (reportsRaw is List) {
+      return reportsRaw
+          .whereType<Map>()
+          .map((item) => AppErrorReport.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    }
+    return [];
   }
 
   Future<void> setActive(int adminId, bool isActive) async {

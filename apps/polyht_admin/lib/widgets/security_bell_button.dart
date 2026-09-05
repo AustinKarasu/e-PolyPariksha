@@ -1,9 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
-import '../models/exam_event.dart';
 import '../screens/security_log_screen.dart';
 import '../services/test_service.dart';
 

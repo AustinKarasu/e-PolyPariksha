@@ -603,6 +603,7 @@ class _StudentTestCard extends StatelessWidget {
                           }
                           return;
                         }
+                        if (!context.mounted) return;
                         await Navigator.of(context).push(MaterialPageRoute(
                             builder: (_) => ExamScreen(test: test)));
                         onRefresh();
